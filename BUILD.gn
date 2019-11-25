@@ -1,0 +1,51 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/package.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/test/test_package.gni")
+import("//build/testing/environments.gni")
+
+rustc_library("omaha-client") {
+  version = "0.0.1"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:failure",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:matches",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_derive",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:serde_repr",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":omaha-client-lib-tests",
+  ]
+}
+
+test_package("omaha-client-lib-tests") {
+  deps = [
+    ":omaha-client_test",
+  ]
+
+  tests = [
+    {
+      name = "omaha_client_lib_test"
+      environments = basic_envs
+    },
+  ]
+}

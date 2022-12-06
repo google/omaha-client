@@ -47,11 +47,16 @@ pub mod complex_time_impls {
         }
     }
 
+    /// A `Sub` implementation for ComplexTime that subtracts the duration from both times that
+    /// the ComplexTime holds.
     impl Sub<Duration> for ComplexTime {
         type Output = Self;
 
         fn sub(self, dur: Duration) -> Self {
-            Self { wall: self.wall - dur, mono: self.mono - dur }
+            Self {
+                wall: self.wall.checked_sub(dur).unwrap(),
+                mono: self.mono.checked_sub(dur).unwrap(),
+            }
         }
     }
 
@@ -335,19 +340,20 @@ pub mod partial_complex_time_impls {
         }
     }
 
-    /// A `Sub` implementation for PartialComplexTime that adds the duration to each of the time
+    /// A `Sub` implementation for PartialComplexTime that subtracts the duration to each of the time
     /// values it holds.
     ///
     /// # Panics
     ///
-    /// The Sub<Duration> implementations for both SystemTime and Instant, which this uses, will
-    /// panic on overflow.
+    /// Panics when the result cannot be expressed in the underlying representation.
+    /// Specifically, SystemTime, Instant, and ComplexTime may not be able to represent the
+    /// resulting time.
     impl Sub<Duration> for PartialComplexTime {
         type Output = Self;
         fn sub(self, dur: Duration) -> Self {
             match self {
-                Self::Wall(w) => Self::Wall(w - dur),
-                Self::Monotonic(m) => Self::Monotonic(m - dur),
+                Self::Wall(w) => Self::Wall(w.checked_sub(dur).unwrap()),
+                Self::Monotonic(m) => Self::Monotonic(m.checked_sub(dur).unwrap()),
                 Self::Complex(c) => Self::Complex(c - dur),
             }
         }

@@ -164,6 +164,12 @@ pub enum Action {
     Updated,
 }
 
+impl std::fmt::Display for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self, f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

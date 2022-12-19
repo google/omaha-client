@@ -99,24 +99,18 @@ mod mock {
                     (RequestedWait::For(duration), ExpectedWait::For(min, max)) => {
                         assert!(
                             duration >= min && duration <= max,
-                            "{:?} out of range [{:?}, {:?}]",
-                            duration,
-                            min,
-                            max,
+                            "{duration:?} out of range [{min:?}, {max:?}]",
                         );
                     }
                     (RequestedWait::Until(requested), ExpectedWait::Until(expected)) => {
                         assert!(
                             requested == expected,
-                            "wait_until() called with wrong time: {}, expected {}",
-                            requested,
-                            expected
+                            "wait_until() called with wrong time: {requested}, expected {expected}"
                         );
                     }
                     (requested, expected) => {
                         panic!(
-                            "Timer called with wrong wait: {:?}, expected {:?}",
-                            requested, expected
+                            "Timer called with wrong wait: {requested:?}, expected {expected:?}"
                         );
                     }
                 }

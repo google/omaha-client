@@ -326,11 +326,11 @@ impl Display for Intermediate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "uri: {} ", self.uri)?;
         for (name, value) in &self.headers {
-            writeln!(f, "header: {}={}", name, value)?;
+            writeln!(f, "header: {name}={value}")?;
         }
         match serde_json::to_value(&self.body) {
-            Ok(value) => writeln!(f, "body: {:#}", value),
-            Err(e) => writeln!(f, "err: {}", e),
+            Ok(value) => writeln!(f, "body: {value:#}"),
+            Err(e) => writeln!(f, "err: {e}"),
         }
     }
 }

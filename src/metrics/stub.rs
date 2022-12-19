@@ -29,6 +29,6 @@ mod tests {
             response_time: Duration::from_secs(2),
             successful: true,
         });
-        assert!(result.is_ok(), "{:?}", result);
+        assert!(result.is_ok(), "{result:?}");
     }
 }

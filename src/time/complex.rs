@@ -308,7 +308,7 @@ pub mod partial_complex_time_impls {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::Wall(w) => write!(f, "{} and No Monotonic", &ReadableSystemTime(*w)),
-                Self::Monotonic(m) => write!(f, "No Wall and {:?}", m),
+                Self::Monotonic(m) => write!(f, "No Wall and {m:?}"),
                 Self::Complex(t) => Display::fmt(t, f),
             }
         }
@@ -389,18 +389,18 @@ pub mod partial_complex_time_impls {
 
             match later_partial_wall {
                 PartialComplexTime::Wall(w) => assert_eq!(w.duration_since(wall).unwrap(), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Wall", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Wall"),
             };
             match later_partial_mono {
                 PartialComplexTime::Monotonic(m) => assert_eq!(m.duration_since(mono), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Monotonic", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Monotonic"),
             };
             match later_partial_comp {
                 PartialComplexTime::Complex(c) => {
                     assert_eq!(c.wall.duration_since(wall).unwrap(), dur);
                     assert_eq!(c.mono.duration_since(mono), dur);
                 }
-                x => panic!("{:?} is not a PartialComplexTime::Complex", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Complex"),
             };
         }
 
@@ -423,18 +423,18 @@ pub mod partial_complex_time_impls {
 
             match partial_wall {
                 PartialComplexTime::Wall(w) => assert_eq!(w.duration_since(wall).unwrap(), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Wall", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Wall"),
             };
             match partial_mono {
                 PartialComplexTime::Monotonic(m) => assert_eq!(m.duration_since(mono), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Monotonic", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Monotonic"),
             };
             match partial_comp {
                 PartialComplexTime::Complex(c) => {
                     assert_eq!(c.wall.duration_since(comp.wall).unwrap(), dur);
                     assert_eq!(c.mono.duration_since(comp.mono), dur);
                 }
-                x => panic!("{:?} is not a PartialComplexTime::Complex", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Complex"),
             };
         }
 
@@ -460,18 +460,18 @@ pub mod partial_complex_time_impls {
 
             match earlier_partial_wall {
                 PartialComplexTime::Wall(w) => assert_eq!(wall.duration_since(w).unwrap(), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Wall", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Wall"),
             };
             match earlier_partial_mono {
                 PartialComplexTime::Monotonic(m) => assert_eq!(mono.duration_since(m), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Monotonic", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Monotonic"),
             };
             match earlier_partial_comp {
                 PartialComplexTime::Complex(c) => {
                     assert_eq!(wall.duration_since(c.wall).unwrap(), dur);
                     assert_eq!(mono.duration_since(c.mono), dur);
                 }
-                x => panic!("{:?} is not a PartialComplexTime::Complex", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Complex"),
             };
         }
 
@@ -498,18 +498,18 @@ pub mod partial_complex_time_impls {
 
             match partial_wall {
                 PartialComplexTime::Wall(w) => assert_eq!(wall.duration_since(w).unwrap(), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Wall", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Wall"),
             };
             match partial_mono {
                 PartialComplexTime::Monotonic(m) => assert_eq!(mono.duration_since(m), dur),
-                x => panic!("{:?} is not a PartialComplexTime::Monotonic", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Monotonic"),
             };
             match partial_comp {
                 PartialComplexTime::Complex(c) => {
                     assert_eq!(wall.duration_since(c.wall).unwrap(), dur);
                     assert_eq!(mono.duration_since(c.mono), dur);
                 }
-                x => panic!("{:?} is not a PartialComplexTime::Complex", x),
+                x => panic!("{x:?} is not a PartialComplexTime::Complex"),
             };
         }
     }

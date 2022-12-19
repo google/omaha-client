@@ -25,7 +25,7 @@ pub trait HttpRequest {
 #[derive(Debug, thiserror::Error)]
 // Parentheses are needed for .source, but will trigger unused_parens, so a tuple is used.
 #[error("Http request failed: {}", match (.source, ()).0 {
-    Some(source) => format!("{}", source),
+    Some(source) => format!("{source}"),
     None => format!("kind: {:?}", .kind),
 })]
 pub struct Error {

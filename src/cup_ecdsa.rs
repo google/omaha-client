@@ -226,7 +226,7 @@ impl Cupv2RequestHandler for StandardCupv2Handler {
         let nonce = Nonce::new();
 
         let uri: Uri = request.get_uri().parse()?;
-        let uri = uri.append_query_parameter("cup2key", &format!("{}:{}", public_key_id, nonce))?;
+        let uri = uri.append_query_parameter("cup2key", &format!("{public_key_id}:{nonce}"))?;
         request.set_uri(uri.to_string());
 
         Ok(RequestMetadata { request_body: request.get_serialized_body()?, public_key_id, nonce })
@@ -297,7 +297,7 @@ pub fn make_transaction_hash(
 ) -> digest::Output<Sha256> {
     let request_hash = Sha256::digest(request_body);
     let response_hash = Sha256::digest(response_body);
-    let cup2_urlparam = format!("{}:{}", public_key_id, nonce);
+    let cup2_urlparam = format!("{public_key_id}:{nonce}");
 
     let mut hasher = Sha256::new();
     hasher.update(request_hash);
@@ -537,7 +537,7 @@ mod tests {
     // For testing only, it is useful to compute equality for CupVerificationError enums.
     impl PartialEq for CupVerificationError {
         fn eq(&self, other: &Self) -> bool {
-            format!("{:?}", self) == format!("{:?}", other)
+            format!("{self:?}") == format!("{other:?}")
         }
     }
 
@@ -682,7 +682,7 @@ mod tests {
             // The hash is the right length and the right value.
             // But the signature is malformed.
             (
-                &format!("foo:{}", expected_hash_hex),
+                &format!("foo:{expected_hash_hex}"),
                 correct_public_key_id,
                 Some(CupVerificationError::SignatureMalformed),
             ),
@@ -695,13 +695,13 @@ mod tests {
             ),
             // Wrong public key ID.
             (
-                &format!("{}:{}", expected_signature, expected_hash_hex,),
+                &format!("{expected_signature}:{expected_hash_hex}",),
                 wrong_public_key_id,
                 Some(CupVerificationError::SpecifiedPublicKeyIdMissing),
             ),
             // Finally, the happy path.
             (
-                &format!("{}:{}", expected_signature, expected_hash_hex,),
+                &format!("{expected_signature}:{expected_hash_hex}",),
                 correct_public_key_id,
                 None,
             ),
@@ -714,8 +714,7 @@ mod tests {
                 cup_handler.verify_response(&request_metadata, &response, public_key_id).err();
             assert_eq!(
                 actual_err, expected_err,
-                "Received error {:?}, expected error {:?}",
-                actual_err, expected_err
+                "Received error {actual_err:?}, expected error {expected_err:?}"
             );
         }
 

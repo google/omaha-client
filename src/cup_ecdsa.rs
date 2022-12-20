@@ -700,11 +700,7 @@ mod tests {
                 Some(CupVerificationError::SpecifiedPublicKeyIdMissing),
             ),
             // Finally, the happy path.
-            (
-                &format!("{expected_signature}:{expected_hash_hex}",),
-                correct_public_key_id,
-                None,
-            ),
+            (&format!("{expected_signature}:{expected_hash_hex}",), correct_public_key_id, None),
         ] {
             let response: Response<Vec<u8>> = hyper::Response::builder()
                 .status(200)

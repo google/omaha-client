@@ -302,7 +302,7 @@ pub fn make_transaction_hash(
     let mut hasher = Sha256::new();
     hasher.update(request_hash);
     hasher.update(response_hash);
-    hasher.update(&cup2_urlparam);
+    hasher.update(cup2_urlparam);
     hasher.finalize()
 }
 

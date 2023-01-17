@@ -60,6 +60,9 @@ pub enum UpdateDecision {
 }
 
 #[cfg(test)]
+// Disable clippy lint for this impl as we want to derive it manually so that it is only available
+// for tests.
+#[allow(clippy::derivable_impls)]
 impl Default for UpdateDecision {
     fn default() -> Self {
         UpdateDecision::Ok

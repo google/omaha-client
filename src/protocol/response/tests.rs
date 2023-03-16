@@ -80,6 +80,7 @@ fn test_all_fields() {
     "status":"ok",
     "cohortname":"",
     "updatecheck":{
+    "_urgent_update":"true",
      "status":"ok",
      "urls":{
       "url":[
@@ -139,7 +140,7 @@ fn test_all_fields() {
                 },
                 ping: Some(Ping { status: OmahaStatus::Ok }),
                 update_check: Some(UpdateCheck {
-                    urgent_update: None,
+                    extra_attributes: Map::new(),
                     status: OmahaStatus::NoUpdate,
                     info: Some("no update for you".to_string()),
                     urls: None,
@@ -169,7 +170,7 @@ fn test_all_fields() {
                 },
                 ping: Some(Ping { status: OmahaStatus::Ok }),
                 update_check: Some(UpdateCheck {
-                    urgent_update: None,
+                    extra_attributes: json!({"_urgent_update":"true"}).as_object().unwrap().to_owned(),
                     status: OmahaStatus::Ok,
                     info: None,
                     urls: Some(URLs::new(vec![
@@ -344,7 +345,7 @@ fn test_single_url() {
             id: "single-url-appid".to_string(),
             status: OmahaStatus::Ok,
             update_check: Some(UpdateCheck {
-                urgent_update: None,
+                extra_attributes: Map::new(),
                 status: OmahaStatus::Ok,
                 info: None,
                 urls: Some(URLs::new(vec!["http://url/base/".to_string()])),

@@ -123,9 +123,9 @@ pub struct UpdateCheck {
     /// The manifest about the update.
     pub manifest: Option<Manifest>,
 
-    /// Whether an urgent update is specified. A capability that is optionally sent
-    /// on top of the Omaha V3 spec.
-    pub urgent_update: Option<bool>,
+    /// Possibly contains whether urgent_update is specified or realm_id.
+    #[serde(flatten)]
+    pub extra_attributes: Map<String, Value>,
 }
 
 impl UpdateCheck {

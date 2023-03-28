@@ -780,9 +780,6 @@ mod tests {
 
     #[test]
     fn test_update_check_schedule_builder_defaults_are_same_as_default_impl() {
-        assert_eq!(
-            UpdateCheckSchedule::builder().build(),
-            UpdateCheckSchedule { ..Default::default() }
-        );
+        assert_eq!(UpdateCheckSchedule::builder().build(), UpdateCheckSchedule::default());
     }
 }

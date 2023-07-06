@@ -5,7 +5,6 @@
 //! This is for Omaha client binaries written in Rust.
 
 #![recursion_limit = "256"]
-#![warn(clippy::all)]
 #![allow(clippy::let_unit_value)]
 
 pub mod app_set;

@@ -84,6 +84,7 @@ rustc_library("omaha-client") {
     "src/time/timers.rs",
     "src/unless.rs",
   ]
+  configs += [ "//build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_unittest_package("omaha-client-lib-tests") {

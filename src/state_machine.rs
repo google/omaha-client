@@ -2583,8 +2583,8 @@ mod tests {
             let mut http = MockHttpRequest::empty();
             http.add_error(http_request::mock_errors::make_transport_error());
             let mut storage = MemStorage::new();
-            storage.set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000);
-            storage.commit();
+            let _ = storage.set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000);
+            let _ = storage.commit();
             let storage = Rc::new(Mutex::new(storage));
 
             let mut state_machine = StateMachineBuilder::new_stub()
@@ -3036,8 +3036,8 @@ mod tests {
             // Start out with a value in storage...
             {
                 let mut storage = storage.lock().await;
-                storage.set_int(CONSECUTIVE_FAILED_UPDATE_CHECKS, 1);
-                storage.commit();
+                let _ = storage.set_int(CONSECUTIVE_FAILED_UPDATE_CHECKS, 1);
+                let _ = storage.commit();
             }
 
             let mut state_machine = StateMachineBuilder::new_stub()

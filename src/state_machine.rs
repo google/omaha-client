@@ -805,7 +805,7 @@ where
                 }
             }
 
-            // TODO(fxbug.dev/41738): Move this to Policy.
+            // TODO(https://fxbug.dev/41738): Move this to Policy.
             // Randomized exponential backoff of 1, 2, & 4 seconds, +/- 500ms.
             let backoff_time_secs = 1 << (omaha_request_attempt - 1);
             let backoff_time = randomize(backoff_time_secs * 1000, 1000);
@@ -1341,7 +1341,7 @@ where
     /// Utility to take a set of protocol::response::Apps and then construct a set of AppResponse
     /// from the update check based on those app IDs.
     ///
-    /// TODO(fxbug.dev/88997): Change the Policy and Installer to return a set of results, one for
+    /// TODO(https://fxbug.dev/88997): Change the Policy and Installer to return a set of results, one for
     ///                        each app ID, then make this match that.
     fn make_app_responses(
         response: protocol::response::Response,

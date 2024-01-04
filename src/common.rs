@@ -171,7 +171,7 @@ pub struct CheckOptions {
 /// This describes the data around the scheduling of update checks
 #[derive(Clone, Copy, Default, PartialEq, Eq, TypedBuilder)]
 pub struct UpdateCheckSchedule {
-    // TODO(fxb/64804): Theoretically last_update_time and last_update_check_time
+    // TODO(https://fxbug.dev/64804): Theoretically last_update_time and last_update_check_time
     // do not need to coexist and we can do all the reporting we want via
     // last_update_time. However, the last update check metric doesn't (as currently
     // worded) match up with what last_update_time actually records.

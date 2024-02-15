@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use crate::protocol::Cohort;
 use serde::{Serialize, Serializer};
@@ -207,7 +211,10 @@ impl UpdateCheck {
     /// Public constructor for an update check request on an app that will not honor an 'update'
     /// response and will not perform an update if one is available.
     pub fn disabled() -> Self {
-        UpdateCheck { disabled: true, offer_update_if_same_version: false }
+        UpdateCheck {
+            disabled: true,
+            offer_update_if_same_version: false,
+        }
     }
 }
 
@@ -284,7 +291,11 @@ pub struct Event {
 impl Event {
     /// Creates a new successful event for the given event type.
     pub fn success(event_type: EventType) -> Self {
-        Self { event_type, event_result: EventResult::Success, ..Self::default() }
+        Self {
+            event_type,
+            event_result: EventResult::Success,
+            ..Self::default()
+        }
     }
 
     /// Creates a new error event for the given event error code.
@@ -373,7 +384,9 @@ impl GUID {
     /// Creates a new random GUID.
     #[cfg(not(test))]
     pub fn new() -> Self {
-        Self { uuid: uuid::Uuid::new_v4() }
+        Self {
+            uuid: uuid::Uuid::new_v4(),
+        }
     }
 
     // For unit tests, creates GUID using a thread local counter, so that for every test case,
@@ -395,7 +408,9 @@ impl GUID {
 
     #[cfg(test)]
     pub fn from_u128(n: u128) -> Self {
-        Self { uuid: uuid::Uuid::from_u128(n) }
+        Self {
+            uuid: uuid::Uuid::from_u128(n),
+        }
     }
 }
 

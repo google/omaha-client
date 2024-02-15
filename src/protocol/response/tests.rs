@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use super::*;
 use crate::protocol::Cohort;
@@ -253,7 +257,9 @@ fn test_new_cohort() {
                 hint: None,
                 name: Some("stable".to_string()),
             },
-            ping: Some(Ping { status: OmahaStatus::Ok }),
+            ping: Some(Ping {
+                status: OmahaStatus::Ok,
+            }),
             update_check: Some(UpdateCheck::no_update()),
             ..App::default()
         }],
@@ -482,11 +488,15 @@ fn test_safe_json() {
 
 #[test]
 fn test_update_check() {
-    let all_packages =
-        vec![Package::with_name("update_package"), Package::with_name("update_package2")];
+    let all_packages = vec![
+        Package::with_name("update_package"),
+        Package::with_name("update_package2"),
+    ];
     let update_check = UpdateCheck {
         manifest: Some(Manifest {
-            packages: Packages { package: all_packages.clone() },
+            packages: Packages {
+                package: all_packages.clone(),
+            },
             ..Manifest::default()
         }),
         ..UpdateCheck::ok(["http://url/base/", "https://url/base/"])
@@ -496,7 +506,10 @@ fn test_update_check() {
         update_check.get_all_url_codebases().collect::<Vec<_>>(),
         vec!["http://url/base/", "https://url/base/"]
     );
-    assert_eq!(update_check.get_all_packages().cloned().collect::<Vec<_>>(), all_packages);
+    assert_eq!(
+        update_check.get_all_packages().cloned().collect::<Vec<_>>(),
+        all_packages
+    );
     assert_eq!(
         update_check.get_all_full_urls().collect::<Vec<_>>(),
         vec![

@@ -1,6 +1,10 @@
-// Copyright 2020 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2020 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use std::time::Duration;
 
@@ -78,12 +82,14 @@ mod mock {
 
         /// Expect a wait until the given PartialComplexTime.
         pub fn expect_until(&mut self, time: impl Into<PartialComplexTime>) {
-            self.expected_waits.push_back(ExpectedWait::Until(time.into()))
+            self.expected_waits
+                .push_back(ExpectedWait::Until(time.into()))
         }
 
         /// Expect a wait for the given Duration.
         pub fn expect_for(&mut self, duration: Duration) {
-            self.expected_waits.push_back(ExpectedWait::For(duration, duration))
+            self.expected_waits
+                .push_back(ExpectedWait::For(duration, duration))
         }
 
         /// Add a new wait to the end of the expected durations.
@@ -306,7 +312,12 @@ mod blocking {
 
             async move {
                 let (send, recv) = oneshot::channel();
-                chan.send(BlockedTimer { wait, unblock: send }).await.unwrap();
+                chan.send(BlockedTimer {
+                    wait,
+                    unblock: send,
+                })
+                .await
+                .unwrap();
 
                 recv.await.unwrap();
             }

@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 #[cfg(test)]
 mod tests;
@@ -89,7 +93,12 @@ impl AppEntry {
     /// Basic constructor for the AppEntry.  All AppEntries MUST have an App and a Cohort,
     /// everything else can be omitted.
     fn new(app: &App) -> AppEntry {
-        AppEntry { app: app.clone(), update_check: None, ping: false, events: Vec::new() }
+        AppEntry {
+            app: app.clone(),
+            update_check: None,
+            ping: false,
+            events: Vec::new(),
+        }
     }
 }
 
@@ -105,7 +114,10 @@ impl From<AppEntry> for ProtocolApp {
         }
         let ping = if entry.ping {
             let UserCounting::ClientRegulatedByDate(days) = entry.app.user_counting;
-            Some(Ping { date_last_active: days, date_last_roll_call: days })
+            Some(Ping {
+                date_last_active: days,
+                date_last_roll_call: days,
+            })
         } else {
             None
         };
@@ -221,12 +233,18 @@ impl<'a> RequestBuilder<'a> {
 
     /// Set the request id of the request.
     pub fn request_id(self, request_id: GUID) -> Self {
-        Self { request_id: Some(request_id), ..self }
+        Self {
+            request_id: Some(request_id),
+            ..self
+        }
     }
 
     /// Set the session id of the request.
     pub fn session_id(self, session_id: GUID) -> Self {
-        Self { session_id: Some(session_id), ..self }
+        Self {
+            session_id: Some(session_id),
+            ..self
+        }
     }
 
     /// This function constructs the protocol::request::Request object from this Builder.
@@ -237,10 +255,17 @@ impl<'a> RequestBuilder<'a> {
         cup_handler: Option<&impl Cupv2RequestHandler>,
     ) -> Result<(http::Request<hyper::Body>, Option<RequestMetadata>)> {
         let (intermediate, request_metadata) = self.build_intermediate(cup_handler)?;
-        if self.app_entries.iter().any(|app| app.update_check.is_some()) {
+        if self
+            .app_entries
+            .iter()
+            .any(|app| app.update_check.is_some())
+        {
             info!("Building Request: {}", intermediate);
         }
-        Ok((Into::<Result<http::Request<hyper::Body>>>::into(intermediate)?, request_metadata))
+        Ok((
+            Into::<Result<http::Request<hyper::Body>>>::into(intermediate)?,
+            request_metadata,
+        ))
     }
 
     /// Helper function that constructs the request body from the builder.
@@ -250,7 +275,10 @@ impl<'a> RequestBuilder<'a> {
     ) -> Result<(Intermediate, Option<RequestMetadata>)> {
         let mut headers = vec![
             // Set the content-type to be JSON.
-            (http::header::CONTENT_TYPE.as_str(), "application/json".to_string()),
+            (
+                http::header::CONTENT_TYPE.as_str(),
+                "application/json".to_string(),
+            ),
             // The updater name header is always set directly from the name in the configuration
             (HEADER_UPDATER_NAME, self.config.updater.name.clone()),
             // The interactivity header is set based on the source of the request that's set in
@@ -269,7 +297,12 @@ impl<'a> RequestBuilder<'a> {
             headers.push((HEADER_APP_ID, main_app.app.id.clone()));
         }
 
-        let apps = self.app_entries.iter().cloned().map(ProtocolApp::from).collect();
+        let apps = self
+            .app_entries
+            .iter()
+            .cloned()
+            .map(ProtocolApp::from)
+            .collect();
 
         let mut intermediate = Intermediate {
             uri: self.config.service_url.clone(),

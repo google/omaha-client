@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use {
     futures::future::BoxFuture,
@@ -47,7 +51,10 @@ impl Error {
     /// This is valid for use in tests as well as production implementations of the trait, if
     /// application-layer timeouts are being implemented.
     pub fn new_timeout() -> Self {
-        Self { kind: ErrorKind::Timeout, source: None }
+        Self {
+            kind: ErrorKind::Timeout,
+            source: None,
+        }
     }
 
     /// Returns true if this error the result of the Hyper API being incorrectly used (a "user"
@@ -67,8 +74,15 @@ impl Error {
 
 impl From<hyper::Error> for Error {
     fn from(error: hyper::Error) -> Self {
-        let kind = if error.is_user() { ErrorKind::User } else { ErrorKind::Transport };
-        Error { kind, source: error.into() }
+        let kind = if error.is_user() {
+            ErrorKind::User
+        } else {
+            ErrorKind::Transport
+        };
+        Error {
+            kind,
+            source: error.into(),
+        }
     }
 }
 
@@ -76,11 +90,17 @@ pub mod mock_errors {
     use super::*;
 
     pub fn make_user_error() -> Error {
-        Error { kind: ErrorKind::User, source: None }
+        Error {
+            kind: ErrorKind::User,
+            source: None,
+        }
     }
 
     pub fn make_transport_error() -> Error {
-        Error { kind: ErrorKind::Transport, source: None }
+        Error {
+            kind: ErrorKind::Transport,
+            source: None,
+        }
     }
 }
 

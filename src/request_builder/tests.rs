@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use super::*;
 use crate::{
@@ -27,7 +31,10 @@ fn test_simple_request() {
 
     let (intermediate, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::OnDemand, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::OnDemand,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(
         &App::builder()
@@ -186,7 +193,10 @@ fn test_same_version_update_request() {
     assert_eq!(app.cohort, Some(Cohort::new("some-channel")));
     assert_eq!(
         app.update_check,
-        Some(UpdateCheck { offer_update_if_same_version: true, ..UpdateCheck::default() })
+        Some(UpdateCheck {
+            offer_update_if_same_version: true,
+            ..UpdateCheck::default()
+        })
     );
     assert!(app.events.is_empty());
     assert_eq!(app.ping, None);
@@ -195,7 +205,10 @@ fn test_same_version_update_request() {
     let app = &request.apps[1];
     assert_eq!(
         app.update_check,
-        Some(UpdateCheck { offer_update_if_same_version: true, ..UpdateCheck::default() })
+        Some(UpdateCheck {
+            offer_update_if_same_version: true,
+            ..UpdateCheck::default()
+        })
     );
 }
 
@@ -206,7 +219,10 @@ fn test_app_includes_extras() {
 
     let (intermediate, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::OnDemand, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::OnDemand,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(
         &App::builder()
@@ -237,7 +253,10 @@ fn test_single_request() {
 
     let (http_request, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::OnDemand, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::OnDemand,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(
         &App::builder()
@@ -293,10 +312,22 @@ fn test_single_request() {
     // Assert that the headers are all correct
     let headers = parts.headers;
     assert_eq!(4, headers.len());
-    assert_eq!("application/json", headers.get("content-type").unwrap().to_str().unwrap());
-    assert_eq!(config.updater.name, headers.get(HEADER_UPDATER_NAME).unwrap().to_str().unwrap());
-    assert_eq!("app id", headers.get(HEADER_APP_ID).unwrap().to_str().unwrap());
-    assert_eq!("fg", headers.get(HEADER_INTERACTIVITY).unwrap().to_str().unwrap());
+    assert_eq!(
+        "application/json",
+        headers.get("content-type").unwrap().to_str().unwrap()
+    );
+    assert_eq!(
+        config.updater.name,
+        headers.get(HEADER_UPDATER_NAME).unwrap().to_str().unwrap()
+    );
+    assert_eq!(
+        "app id",
+        headers.get(HEADER_APP_ID).unwrap().to_str().unwrap()
+    );
+    assert_eq!(
+        "fg",
+        headers.get(HEADER_INTERACTIVITY).unwrap().to_str().unwrap()
+    );
 }
 
 /// Test that a ping is correctly added to an App entry.
@@ -306,7 +337,10 @@ fn test_simple_ping() {
 
     let (intermediate, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_ping(
         &App::builder()
@@ -347,7 +381,10 @@ fn test_simple_event() {
 
     let (http_request, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_event(
         &App::builder()
@@ -393,7 +430,10 @@ fn test_multiple_events() {
     // Make the call to the RequestBuilder that is being tested.
     let (http_request, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_event(
         &app_1,
@@ -464,7 +504,10 @@ fn test_ping_added_to_first_app_update_entry() {
     // Now make the call to the RequestBuilder that is being tested.
     let (http_request, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(&app_1)
     .add_update_check(&app_2)
@@ -519,14 +562,18 @@ fn test_ping_added_to_second_app_update_entry() {
     // Now make the call to the RequestBuilder that is being tested.
     let builder = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(&app_1)
     .add_update_check(&app_2)
     .add_ping(&app_2);
 
-    let (http_request, _request_metadata) =
-        builder.build_intermediate(None::<&StandardCupv2Handler>).unwrap();
+    let (http_request, _request_metadata) = builder
+        .build_intermediate(None::<&StandardCupv2Handler>)
+        .unwrap();
     let request = http_request.body.request;
 
     // Validate that the resultant request is correct.
@@ -574,7 +621,10 @@ fn test_event_added_to_first_app_update_entry() {
     // Now make the call to the RequestBuilder that is being tested.
     let (http_request, _request_metadata) = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(&app_1)
     .add_update_check(&app_2)
@@ -636,7 +686,10 @@ fn test_event_added_to_second_app_update_entry() {
     // Now make the call to the RequestBuilder that is being tested.
     let builder = RequestBuilder::new(
         &config,
-        &RequestParams { source: InstallSource::ScheduledTask, ..RequestParams::default() },
+        &RequestParams {
+            source: InstallSource::ScheduledTask,
+            ..RequestParams::default()
+        },
     )
     .add_update_check(&app_1)
     .add_update_check(&app_2)
@@ -650,8 +703,9 @@ fn test_event_added_to_second_app_update_entry() {
         },
     );
 
-    let (http_request, _request_metadata) =
-        builder.build_intermediate(None::<&StandardCupv2Handler>).unwrap();
+    let (http_request, _request_metadata) = builder
+        .build_intermediate(None::<&StandardCupv2Handler>)
+        .unwrap();
     let request = http_request.body.request;
 
     // There should only be the two entries.

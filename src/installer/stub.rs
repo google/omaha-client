@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use super::*;
 use crate::{
@@ -52,8 +56,11 @@ impl Installer for StubInstaller {
         _observer: Option<&dyn ProgressObserver>,
     ) -> LocalBoxFuture<'_, (Self::InstallResult, Vec<AppInstallResult<Self::Error>>)> {
         if self.should_fail {
-            future::ready(((), vec![AppInstallResult::Failed(StubInstallErrors::Failed)]))
-                .boxed_local()
+            future::ready((
+                (),
+                vec![AppInstallResult::Failed(StubInstallErrors::Failed)],
+            ))
+            .boxed_local()
         } else {
             future::ready(((), vec![AppInstallResult::Installed])).boxed_local()
         }

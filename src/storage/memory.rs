@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use super::*;
 use futures::future::BoxFuture;
@@ -36,7 +40,10 @@ pub enum StorageErrors {
 
 impl MemStorage {
     pub fn new() -> Self {
-        MemStorage { data: HashMap::new(), committed: true }
+        MemStorage {
+            data: HashMap::new(),
+            committed: true,
+        }
     }
 
     pub fn committed(&self) -> bool {
@@ -95,7 +102,8 @@ impl Storage for MemStorage {
         key: &'a str,
         value: &'a str,
     ) -> BoxFuture<'_, Result<(), Self::Error>> {
-        self.data.insert(key.to_string(), Value::String(value.to_string()));
+        self.data
+            .insert(key.to_string(), Value::String(value.to_string()));
         self.committed = false;
         future::ready(Ok(())).boxed()
     }
@@ -175,7 +183,9 @@ mod tests {
 
     #[test]
     fn test_ensure_no_error_remove_nonexistent_key() {
-        block_on(do_ensure_no_error_remove_nonexistent_key(&mut MemStorage::new()));
+        block_on(do_ensure_no_error_remove_nonexistent_key(
+            &mut MemStorage::new(),
+        ));
     }
 
     #[test]
@@ -187,7 +197,10 @@ mod tests {
             assert!(!storage.committed());
             storage.commit().await.unwrap();
             assert!(storage.committed());
-            storage.set_string("some string key", "some string").await.unwrap();
+            storage
+                .set_string("some string key", "some string")
+                .await
+                .unwrap();
             assert!(!storage.committed());
             storage.set_int("some int key", 42).await.unwrap();
             assert!(!storage.committed());

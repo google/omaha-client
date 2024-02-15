@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use serde::{Deserialize, Serialize};
 
@@ -40,11 +44,19 @@ pub struct Cohort {
 impl Cohort {
     /// Create a new Cohort instance from just a cohort id (channel name).
     pub fn new(id: &str) -> Cohort {
-        Cohort { id: Some(id.to_string()), hint: None, name: None }
+        Cohort {
+            id: Some(id.to_string()),
+            hint: None,
+            name: None,
+        }
     }
 
     pub fn from_hint(hint: &str) -> Cohort {
-        Cohort { id: None, hint: Some(hint.to_string()), name: None }
+        Cohort {
+            id: None,
+            hint: Some(hint.to_string()),
+            name: None,
+        }
     }
 
     pub fn update_from_omaha(&mut self, omaha_cohort: Self) {

@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 //! The omaha_client::common module contains those types that are common to many parts of the
 //! library.  Many of these don't belong to a specific sub-module.
@@ -9,6 +13,7 @@ use crate::{
     protocol::{self, request::InstallSource, Cohort},
     storage::Storage,
     time::PartialComplexTime,
+    version::Version,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,7 +21,6 @@ use std::fmt;
 use std::time::Duration;
 use tracing::error;
 use typed_builder::TypedBuilder;
-use version::Version;
 
 /// Omaha has historically supported multiple methods of counting devices.  Currently, the
 /// only recommended method is the Client Regulated - Date method.
@@ -87,7 +91,10 @@ pub struct PersistedApp {
 
 impl From<&App> for PersistedApp {
     fn from(app: &App) -> Self {
-        PersistedApp { cohort: app.cohort.clone(), user_counting: app.user_counting.clone() }
+        PersistedApp {
+            cohort: app.cohort.clone(),
+            user_counting: app.user_counting.clone(),
+        }
     }
 }
 
@@ -112,7 +119,10 @@ impl App {
                     }
                 }
                 Err(e) => {
-                    error!("Unable to deserialize PersistedApp from json {}: {}", app_json, e);
+                    error!(
+                        "Unable to deserialize PersistedApp from json {}: {}",
+                        app_json, e
+                    );
                 }
             }
         }
@@ -130,7 +140,10 @@ impl App {
                 }
             }
             Err(e) => {
-                error!("Unable to serialize PersistedApp {:?}: {}", persisted_app, e);
+                error!(
+                    "Unable to serialize PersistedApp {:?}: {}",
+                    persisted_app, e
+                );
             }
         }
     }
@@ -143,7 +156,10 @@ impl App {
 
     /// Get the target channel name from cohort hint, fallback to current channel if no hint.
     pub fn get_target_channel(&self) -> &str {
-        self.cohort.hint.as_deref().unwrap_or_else(|| self.get_current_channel())
+        self.cohort
+            .hint
+            .as_deref()
+            .unwrap_or_else(|| self.get_current_channel())
     }
 
     /// Set the cohort hint to |channel|.
@@ -246,8 +262,14 @@ where
 impl fmt::Debug for UpdateCheckSchedule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("UpdateCheckSchedule")
-            .field("last_update_time", &PrettyOptionDisplay(self.last_update_time))
-            .field("next_update_time", &PrettyOptionDisplay(self.next_update_time))
+            .field(
+                "last_update_time",
+                &PrettyOptionDisplay(self.last_update_time),
+            )
+            .field(
+                "next_update_time",
+                &PrettyOptionDisplay(self.next_update_time),
+            )
             .finish()
     }
 }
@@ -338,7 +360,10 @@ mod tests {
         assert_eq!(app.cohort.hint, Some("test-channel".to_string()));
         assert_eq!(app.cohort.name, None);
         assert_eq!(app.cohort.id, None);
-        assert_eq!(app.user_counting, UserCounting::ClientRegulatedByDate(Some(42)));
+        assert_eq!(
+            app.user_counting,
+            UserCounting::ClientRegulatedByDate(Some(42))
+        );
         assert!(app.extra_fields.is_empty(), "Extra fields are not empty");
     }
 
@@ -388,7 +413,10 @@ mod tests {
                 name: Some("some_name".to_string()),
             };
             assert_eq!(cohort, app.cohort);
-            assert_eq!(UserCounting::ClientRegulatedByDate(Some(123)), app.user_counting);
+            assert_eq!(
+                UserCounting::ClientRegulatedByDate(Some(123)),
+                app.user_counting
+            );
         });
     }
 
@@ -416,7 +444,10 @@ mod tests {
                 name: Some("some_name".to_string()),
             };
             assert_eq!(cohort, app.cohort);
-            assert_eq!(UserCounting::ClientRegulatedByDate(Some(123)), app.user_counting);
+            assert_eq!(
+                UserCounting::ClientRegulatedByDate(Some(123)),
+                app.user_counting
+            );
         });
     }
 
@@ -445,7 +476,10 @@ mod tests {
                 name: Some("some_name".to_string()),
             };
             assert_eq!(cohort, app.cohort);
-            assert_eq!(UserCounting::ClientRegulatedByDate(Some(123)), app.user_counting);
+            assert_eq!(
+                UserCounting::ClientRegulatedByDate(Some(123)),
+                app.user_counting
+            );
         });
     }
 
@@ -483,7 +517,10 @@ mod tests {
                 name: Some("some_name".to_string()),
             };
             assert_eq!(cohort, app.cohort);
-            assert_eq!(UserCounting::ClientRegulatedByDate(Some(123)), app.user_counting);
+            assert_eq!(
+                UserCounting::ClientRegulatedByDate(Some(123)),
+                app.user_counting
+            );
         });
     }
 
@@ -522,7 +559,10 @@ mod tests {
                 name: Some("some_name_2".to_string()),
             };
             assert_eq!(cohort, app.cohort);
-            assert_eq!(UserCounting::ClientRegulatedByDate(Some(123)), app.user_counting);
+            assert_eq!(
+                UserCounting::ClientRegulatedByDate(Some(123)),
+                app.user_counting
+            );
         });
     }
 
@@ -562,8 +602,16 @@ mod tests {
     fn test_app_persist_empty() {
         block_on(async {
             let mut storage = MemStorage::new();
-            let cohort = Cohort { id: None, hint: None, name: None };
-            let app = App::builder().id("some_id").version([1, 2]).cohort(cohort).build();
+            let cohort = Cohort {
+                id: None,
+                hint: None,
+                name: None,
+            };
+            let app = App::builder()
+                .id("some_id")
+                .version([1, 2])
+                .cohort(cohort)
+                .build();
             app.persist(&mut storage).await;
 
             let expected = serde_json::json!({
@@ -579,8 +627,15 @@ mod tests {
 
     #[test]
     fn test_app_get_current_channel() {
-        let cohort = Cohort { name: Some("current-channel-123".to_string()), ..Cohort::default() };
-        let app = App::builder().id("some_id").version([0, 1]).cohort(cohort).build();
+        let cohort = Cohort {
+            name: Some("current-channel-123".to_string()),
+            ..Cohort::default()
+        };
+        let app = App::builder()
+            .id("some_id")
+            .version([0, 1])
+            .cohort(cohort)
+            .build();
         assert_eq!("current-channel-123", app.get_current_channel());
     }
 
@@ -593,14 +648,25 @@ mod tests {
     #[test]
     fn test_app_get_target_channel() {
         let cohort = Cohort::from_hint("target-channel-456");
-        let app = App::builder().id("some_id").version([0, 1]).cohort(cohort).build();
+        let app = App::builder()
+            .id("some_id")
+            .version([0, 1])
+            .cohort(cohort)
+            .build();
         assert_eq!("target-channel-456", app.get_target_channel());
     }
 
     #[test]
     fn test_app_get_target_channel_fallback() {
-        let cohort = Cohort { name: Some("current-channel-123".to_string()), ..Cohort::default() };
-        let app = App::builder().id("some_id").version([0, 1]).cohort(cohort).build();
+        let cohort = Cohort {
+            name: Some("current-channel-123".to_string()),
+            ..Cohort::default()
+        };
+        let app = App::builder()
+            .id("some_id")
+            .version([0, 1])
+            .cohort(cohort)
+            .build();
         assert_eq!("current-channel-123", app.get_target_channel());
     }
 
@@ -624,7 +690,10 @@ mod tests {
     fn test_app_set_target_channel_and_id() {
         let mut app = App::builder().id("some_id").version([0, 1]).build();
         assert_eq!("", app.get_target_channel());
-        app.set_target_channel(Some("new-target-channel".to_string()), Some("new-id".to_string()));
+        app.set_target_channel(
+            Some("new-target-channel".to_string()),
+            Some("new-id".to_string()),
+        );
         assert_eq!("new-target-channel", app.get_target_channel());
         assert_eq!("new-id", app.id);
         app.set_target_channel(None, None);
@@ -648,12 +717,18 @@ mod tests {
 
     #[test]
     fn test_pretty_option_display_with_none() {
-        assert_eq!("None", format!("{:?}", PrettyOptionDisplay(Option::<String>::None)));
+        assert_eq!(
+            "None",
+            format!("{:?}", PrettyOptionDisplay(Option::<String>::None))
+        );
     }
 
     #[test]
     fn test_pretty_option_display_with_some() {
-        assert_eq!("this is a test", format!("{:?}", PrettyOptionDisplay(Some("this is a test"))));
+        assert_eq!(
+            "this is a test",
+            format!("{:?}", PrettyOptionDisplay(Some("this is a test")))
+        );
     }
 
     #[test]
@@ -698,7 +773,10 @@ mod tests {
                     SystemTime::UNIX_EPOCH + Duration::from_secs(100000)
                 ))
                 .next_update_time(
-                    CheckTiming::builder().time(now).minimum_wait(Duration::from_secs(100)).build()
+                    CheckTiming::builder()
+                        .time(now)
+                        .minimum_wait(Duration::from_secs(100))
+                        .build()
                 )
                 .build(),
             UpdateCheckSchedule {
@@ -780,6 +858,9 @@ mod tests {
 
     #[test]
     fn test_update_check_schedule_builder_defaults_are_same_as_default_impl() {
-        assert_eq!(UpdateCheckSchedule::builder().build(), UpdateCheckSchedule::default());
+        assert_eq!(
+            UpdateCheckSchedule::builder().build(),
+            UpdateCheckSchedule::default()
+        );
     }
 }

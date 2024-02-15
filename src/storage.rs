@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use crate::time::system_time_conversion::{
     checked_system_time_to_micros_from_epoch, micros_from_epoch_to_system_time,
@@ -34,14 +38,21 @@ pub use stub::StubStorage;
 /// the key.  This is so that the Result::uwrap_or(<...default...>) pattern will work.
 ///
 /// ```
-/// let storage = SomeStorageImpl::new();
+/// # futures::executor::block_on(async {
+/// use omaha_client::storage::{MemStorage, Storage};
+/// use omaha_client::unless::Unless;
+/// let mut storage = MemStorage::new();
 /// storage.set_int("key", 345);
 ///
-/// // value should be None
-/// let value: Option<String> = storage.get_string("key");
+/// // value should be None:
+/// let value: Option<String> = storage.get_string("key").await;
+/// assert_eq!(None, value);
 ///
-/// // value should be "default"
-/// let value: String = storage.get_string("key").unwrap_or("default");
+///
+/// // value should be "default":
+/// let value: String = storage.get_string("key").await.unwrap_or("default".to_string());
+/// assert_eq!("default", value);
+/// # });
 /// ```
 pub trait Storage {
     type Error: std::error::Error;
@@ -113,7 +124,9 @@ pub trait StorageExt: Storage {
     /// Get a SystemTime from the backing store.  Returns None if there is no value for the given
     /// key, or if the value for the key has a different type.
     fn get_time<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<SystemTime>> {
-        self.get_int(key).map(|option| option.map(micros_from_epoch_to_system_time)).boxed()
+        self.get_int(key)
+            .map(|option| option.map(micros_from_epoch_to_system_time))
+            .boxed()
     }
 
     /// Set a SystemTime to be stored in the backing store.  The implementation should cache the
@@ -129,12 +142,16 @@ pub trait StorageExt: Storage {
 
     /// Remove the value for |key| from the backing store, log an error message on error.
     fn remove_or_log<'a>(&'a mut self, key: &'a str) -> BoxFuture<'_, ()> {
-        self.remove(key).unwrap_or_else(move |e| error!("Unable to remove {}: {}", key, e)).boxed()
+        self.remove(key)
+            .unwrap_or_else(move |e| error!("Unable to remove {}: {}", key, e))
+            .boxed()
     }
 
     /// Persist all cached values to storage, log an error message on error.
     fn commit_or_log(&mut self) -> BoxFuture<'_, ()> {
-        self.commit().unwrap_or_else(|e| error!("Unable to commit persisted data: {}", e)).boxed()
+        self.commit()
+            .unwrap_or_else(|e| error!("Unable to commit persisted data: {}", e))
+            .boxed()
     }
 }
 
@@ -158,11 +175,20 @@ pub mod tests {
 
         storage.set_string("some key", "some value").await.unwrap();
         storage.commit().await.unwrap();
-        assert_eq!(Some("some value".to_string()), storage.get_string("some key").await);
+        assert_eq!(
+            Some("some value".to_string()),
+            storage.get_string("some key").await
+        );
 
-        storage.set_string("some key", "some other value").await.unwrap();
+        storage
+            .set_string("some key", "some other value")
+            .await
+            .unwrap();
         storage.commit().await.unwrap();
-        assert_eq!(Some("some other value".to_string()), storage.get_string("some key").await);
+        assert_eq!(
+            Some("some other value".to_string()),
+            storage.get_string("some key").await
+        );
 
         storage.remove("some key").await.unwrap();
         storage.commit().await.unwrap();
@@ -190,7 +216,10 @@ pub mod tests {
     pub async fn do_test_set_option_int<S: Storage>(storage: &mut S) {
         assert_eq!(None, storage.get_int("some int key").await);
 
-        storage.set_option_int("some int key", Some(42)).await.unwrap();
+        storage
+            .set_option_int("some int key", Some(42))
+            .await
+            .unwrap();
         storage.commit().await.unwrap();
         assert_eq!(Some(42), storage.get_int("some int key").await);
 
@@ -220,9 +249,15 @@ pub mod tests {
     pub async fn do_test_set_get_remove_time<S: Storage>(storage: &mut S) {
         assert_eq!(None, storage.get_time("some time key").await);
 
-        storage.set_time("some time key", SystemTime::UNIX_EPOCH).await.unwrap();
+        storage
+            .set_time("some time key", SystemTime::UNIX_EPOCH)
+            .await
+            .unwrap();
         storage.commit().await.unwrap();
-        assert_eq!(Some(SystemTime::UNIX_EPOCH), storage.get_time("some time key").await);
+        assert_eq!(
+            Some(SystemTime::UNIX_EPOCH),
+            storage.get_time("some time key").await
+        );
 
         let time = SystemTime::UNIX_EPOCH + Duration::from_secs(1234);
         storage.set_time("some time key", time).await.unwrap();

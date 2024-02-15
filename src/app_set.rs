@@ -1,6 +1,10 @@
-// Copyright 2021 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2021 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use {
     crate::{common::App, state_machine::update_check::AppResponse, storage::Storage},
@@ -96,7 +100,10 @@ mod tests {
             App::builder().id("some_id").version([0, 1]).build(),
             App::builder().id("not_updated_id").version([2]).build(),
         ]);
-        let cohort = Cohort { name: Some("some-channel".to_string()), ..Cohort::default() };
+        let cohort = Cohort {
+            name: Some("some-channel".to_string()),
+            ..Cohort::default()
+        };
         let user_counting = UserCounting::ClientRegulatedByDate(Some(42));
         let app_responses = vec![
             AppResponse {
@@ -118,7 +125,10 @@ mod tests {
         assert_eq!(cohort, apps[0].cohort);
         assert_eq!(user_counting, apps[0].user_counting);
 
-        assert_eq!(apps[1], App::builder().id("not_updated_id").version([2]).build());
+        assert_eq!(
+            apps[1],
+            App::builder().id("not_updated_id").version([2]).build()
+        );
     }
 
     #[test]

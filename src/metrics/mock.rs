@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use crate::metrics::{Metrics, MetricsReporter};
 use anyhow::{format_err, Error};
@@ -14,12 +18,18 @@ pub struct MockMetricsReporter {
 
 impl MockMetricsReporter {
     pub fn new_failing() -> Self {
-        MockMetricsReporter { should_fail: true, metrics: vec![] }
+        MockMetricsReporter {
+            should_fail: true,
+            metrics: vec![],
+        }
     }
 
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        MockMetricsReporter { should_fail: false, metrics: vec![] }
+        MockMetricsReporter {
+            should_fail: false,
+            metrics: vec![],
+        }
     }
 }
 

@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use {
     crate::protocol::request::{Event, InstallSource},
@@ -20,9 +24,16 @@ pub use stub::StubMetricsReporter;
 pub enum Metrics {
     /// Elapsed time from sending an update check to getting a response from Omaha, with a bool to
     /// hold whether that was a success or a failure.
-    UpdateCheckResponseTime { response_time: Duration, successful: bool },
+    UpdateCheckResponseTime {
+        response_time: Duration,
+        successful: bool,
+    },
     /// Elapsed time from the previous update check to the current update check.
-    UpdateCheckInterval { interval: Duration, clock: ClockType, install_source: InstallSource },
+    UpdateCheckInterval {
+        interval: Duration,
+        clock: ClockType,
+        install_source: InstallSource,
+    },
     /// Elapsed time from starting an update to having successfully applied it.
     SuccessfulUpdateDuration(Duration),
     /// Elapsed time from first seeing an update to having successfully applied it.

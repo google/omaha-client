@@ -1,6 +1,10 @@
-// Copyright 2020 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2020 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 //! The `omaha_client::time` module provides a set of types and traits to allow for the expressing
 //! of time using both a wall-time clock, and a monotonic clock.
@@ -22,13 +26,18 @@
 //! or they can be bounds for when an event in the future can happen:
 //!
 //! ```
-//! let past_event_wall_time: SystemTime = read_some_system_time();
+//! use omaha_client::time::{ComplexTime, MockTimeSource, TimeSource, Timer};
+//! use omaha_client::time::timers::MockTimer;
+//! use std::time::{Duration, SystemTime};
+//! let past_event_wall_time: SystemTime = SystemTime::now();
+//! let source = MockTimeSource::new_from_now();
 //! let duration_to_next = Duration::from_secs(1*60*60); // one hour
 //! let rough_next_event_time = ComplexTime{
 //!                               wall: past_event_wall_time + duration_to_next,
-//!                               mono: TimeSource::now_in_monotonic() + duration_to_next
+//!                               mono: source.now_in_monotonic() + duration_to_next
 //!                             };
-//! timer.wait_until_either(rough_next_event_time).await;
+//! let mut timer = MockTimer::new();
+//! timer.wait_until(rough_next_event_time);
 //! ```
 //!
 //! The above setups up a `ComplexTime` as a bound that based on an expected wall time, and
@@ -134,6 +143,7 @@ impl ComplexTime {
 ///
 /// The important differentiation of this vs. a struct such as:
 /// ```
+/// use std::time::SystemTime;
 /// struct MaybeBoth {
 ///   wall: Option<SystemTime>,
 ///   monotonic: Option<SystemTime>
@@ -177,14 +187,19 @@ impl PartialComplexTime {
     /// Return the PartialComplexTime::Wall that represents the same time as the specified
     /// microseconds from the UNIX Epoch (1970-01-01 UTC)
     pub fn from_micros_since_epoch(micros: i64) -> Self {
-        PartialComplexTime::from(system_time_conversion::micros_from_epoch_to_system_time(micros))
+        PartialComplexTime::from(system_time_conversion::micros_from_epoch_to_system_time(
+            micros,
+        ))
     }
 
     /// Return a new ComplexTime that's based on the time values of this PartialComplexTime,
     /// setting either unknown field from the passed-in ComplexTime.
     pub fn complete_with(&self, complex: ComplexTime) -> ComplexTime {
         let (system, instant) = self.destructure();
-        ComplexTime::from((system.unwrap_or(complex.wall), instant.unwrap_or(complex.mono)))
+        ComplexTime::from((
+            system.unwrap_or(complex.wall),
+            instant.unwrap_or(complex.mono),
+        ))
     }
 
     /// Destructure the PartialComplexTime into it's two components, each as an Option.
@@ -258,6 +273,8 @@ where
 ///
 /// # Example
 /// ```
+/// use omaha_client::time::ReadableSystemTime;
+/// use std::time::{Duration, SystemTime};
 /// let sys_time = SystemTime::UNIX_EPOCH + Duration::from_nanos(994610096026420000);
 ///
 /// assert_eq!(

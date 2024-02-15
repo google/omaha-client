@@ -1,9 +1,14 @@
-// Copyright 2020 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 use crate::{
     app_set::{AppSet, AppSetExt as _},
+    async_generator,
     configuration::Config,
     cup_ecdsa::Cupv2Handler,
     http_request::HttpRequest,
@@ -284,8 +289,10 @@ where
         let context = {
             let storage = storage.lock().await;
             let mut app_set = app_set.lock().await;
-            let ((), context) =
-                futures::join!(app_set.load(&*storage), update_check::Context::load(&*storage));
+            let ((), context) = futures::join!(
+                app_set.load(&*storage),
+                update_check::Context::load(&*storage)
+            );
             tracing::info!("Omaha app set: {:?}", app_set.get_apps());
             context
         };
@@ -327,7 +334,9 @@ where
         let request_params = RequestParams::default();
 
         async_generator::generate(move |mut co| async move {
-            state_machine.start_update_check(request_params, &mut co).await;
+            state_machine
+                .start_update_check(request_params, &mut co)
+                .await;
         })
         .into_yielded()
     }

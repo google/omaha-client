@@ -1,7 +1,11 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
+//
 use crate::{
     common::{App, CheckOptions, CheckTiming, ProtocolState, UpdateCheckSchedule},
     installer::Plan,
@@ -30,7 +34,9 @@ impl<P: Plan> Policy for StubPolicy<P> {
         _scheduling: &UpdateCheckSchedule,
         _protocol_state: &ProtocolState,
     ) -> CheckTiming {
-        CheckTiming::builder().time(policy_data.current_time).build()
+        CheckTiming::builder()
+            .time(policy_data.current_time)
+            .build()
     }
 
     fn update_check_allowed(
@@ -80,7 +86,10 @@ where
     P: Plan,
 {
     pub fn new(time_source: T) -> Self {
-        Self { time_source, _phantom_data: std::marker::PhantomData }
+        Self {
+            time_source,
+            _phantom_data: std::marker::PhantomData,
+        }
     }
 }
 
@@ -104,7 +113,9 @@ where
         protocol_state: &ProtocolState,
     ) -> BoxFuture<'_, CheckTiming> {
         let check_timing = StubPolicy::<P>::compute_next_update_time(
-            &PolicyData::builder().current_time(self.time_source.now()).build(),
+            &PolicyData::builder()
+                .current_time(self.time_source.now())
+                .build(),
             apps,
             scheduling,
             protocol_state,
@@ -161,8 +172,9 @@ mod tests {
 
     #[test]
     fn test_compute_next_update_time() {
-        let policy_data =
-            PolicyData::builder().current_time(MockTimeSource::new_from_now().now()).build();
+        let policy_data = PolicyData::builder()
+            .current_time(MockTimeSource::new_from_now().now())
+            .build();
         let update_check_schedule = UpdateCheckSchedule::default();
         let result = StubPolicy::<StubPlan>::compute_next_update_time(
             &policy_data,
@@ -170,13 +182,17 @@ mod tests {
             &update_check_schedule,
             &ProtocolState::default(),
         );
-        let expected = CheckTiming::builder().time(policy_data.current_time).build();
+        let expected = CheckTiming::builder()
+            .time(policy_data.current_time)
+            .build();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_update_check_allowed_on_demand() {
-        let check_options = CheckOptions { source: InstallSource::OnDemand };
+        let check_options = CheckOptions {
+            source: InstallSource::OnDemand,
+        };
         let result = StubPolicy::<StubPlan>::update_check_allowed(
             &(),
             &[],
@@ -194,7 +210,9 @@ mod tests {
 
     #[test]
     fn test_update_check_allowed_scheduled_task() {
-        let check_options = CheckOptions { source: InstallSource::ScheduledTask };
+        let check_options = CheckOptions {
+            source: InstallSource::ScheduledTask,
+        };
         let result = StubPolicy::<StubPlan>::update_check_allowed(
             &(),
             &[],

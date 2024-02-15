@@ -1,6 +1,10 @@
-// Copyright 2019 The Fuchsia Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2019 The Fuchsia Authors
+//
+// Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
 
 #[cfg(test)]
 mod tests;
@@ -80,7 +84,10 @@ pub struct App {
 impl App {
     pub fn get_manifest_version(&self) -> Option<String> {
         self.update_check.as_ref().and_then(|update_check| {
-            update_check.manifest.as_ref().map(|manifest| manifest.version.clone())
+            update_check
+                .manifest
+                .as_ref()
+                .map(|manifest| manifest.version.clone())
         })
     }
 }
@@ -137,12 +144,18 @@ impl UpdateCheck {
     }
 
     pub fn no_update() -> Self {
-        UpdateCheck { status: OmahaStatus::NoUpdate, ..UpdateCheck::default() }
+        UpdateCheck {
+            status: OmahaStatus::NoUpdate,
+            ..UpdateCheck::default()
+        }
     }
 
     /// Returns an iterator of all url codebases in this `updatecheck`.
     pub fn get_all_url_codebases(&self) -> impl Iterator<Item = &str> {
-        self.urls.iter().flat_map(|urls| &urls.url).map(|url| url.codebase.as_str())
+        self.urls
+            .iter()
+            .flat_map(|urls| &urls.url)
+            .map(|url| url.codebase.as_str())
     }
 
     /// Returns an iterator of all packages in this `updatecheck`.
@@ -153,7 +166,8 @@ impl UpdateCheck {
     /// Returns an iterator of all full urls in this `updatecheck`.
     pub fn get_all_full_urls(&self) -> impl Iterator<Item = String> + '_ {
         self.get_all_url_codebases().flat_map(move |codebase| {
-            self.get_all_packages().map(move |package| format!("{}{}", codebase, package.name))
+            self.get_all_packages()
+                .map(move |package| format!("{}{}", codebase, package.name))
         })
     }
 }
@@ -166,7 +180,9 @@ pub struct URLs {
 
 impl URLs {
     pub fn new(urls: Vec<String>) -> Self {
-        URLs { url: urls.into_iter().map(|url| URL { codebase: url }).collect() }
+        URLs {
+            url: urls.into_iter().map(|url| URL { codebase: url }).collect(),
+        }
     }
 }
 
@@ -235,7 +251,10 @@ pub struct Package {
 
 impl Package {
     pub fn with_name(name: impl Into<String>) -> Self {
-        Self { name: name.into(), ..Self::default() }
+        Self {
+            name: name.into(),
+            ..Self::default()
+        }
     }
 }
 

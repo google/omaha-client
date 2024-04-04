@@ -396,7 +396,7 @@ impl GUID {
     pub fn new() -> Self {
         thread_local! {
             static COUNTER: std::cell::RefCell<u128> =
-            std::cell::RefCell::new(0);
+            const { std::cell::RefCell::new(0) };
         }
         COUNTER.with(|counter| {
             let mut counter = counter.borrow_mut();

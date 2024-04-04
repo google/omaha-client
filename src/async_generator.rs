@@ -115,7 +115,7 @@ where
     F: Future<Output = Result<(), E>>,
 {
     /// Transforms this stream of `GeneratorState<I, Result<(), E>>` into a stream of `Result<I, E>`.
-    pub fn into_try_stream(self) -> impl Stream<Item = Result<I, E>> + FusedStream {
+    pub fn into_try_stream(self) -> impl FusedStream<Item = Result<I, E>> {
         self.filter_map(|state| {
             future::ready(match state {
                 GeneratorState::Yielded(i) => Some(Ok(i)),
@@ -147,7 +147,7 @@ where
 {
     /// Filters the states produced by this generator to only include intermediate yielded values,
     /// discarding the final result.
-    pub fn into_yielded(self) -> impl Stream<Item = I> + FusedStream {
+    pub fn into_yielded(self) -> impl FusedStream<Item = I> {
         self.filter_map(|state| future::ready(state.into_yielded()))
     }
 }

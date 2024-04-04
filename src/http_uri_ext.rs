@@ -34,18 +34,16 @@ impl HttpUriExt for Uri {
             Some(path_and_query) => (path_and_query.path(), path_and_query.query()),
             None => ("/", None),
         };
-        let new_path_and_query = if base_path.ends_with("/") {
+        let new_path_and_query = if base_path.ends_with('/') {
             if let Some(query) = query {
                 format!("{}{}?{}", base_path, path, query)
             } else {
                 format!("{}{}", base_path, path)
             }
+        } else if let Some(query) = query {
+            format!("{}/{}?{}", base_path, path, query)
         } else {
-            if let Some(query) = query {
-                format!("{}/{}?{}", base_path, path, query)
-            } else {
-                format!("{}/{}", base_path, path)
-            }
+            format!("{}/{}", base_path, path)
         };
         base_parts.path_and_query = Some(new_path_and_query.parse()?);
         Ok(Uri::from_parts(base_parts)?)

@@ -28,6 +28,8 @@ jobs:
     
     - name: Run rustfmt
       run: cargo fmt -- --check
+      # Run fmt on stable only for now.
+      if: matrix.toolchain == 'stable'
 
     - name: Run clippy
       run: cargo clippy -- -Dwarnings

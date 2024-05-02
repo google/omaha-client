@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
-env: 
+env:
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -25,19 +25,16 @@ jobs:
 
     - name: Install Rust
       run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-    
+
     - name: Run rustfmt
       run: cargo fmt -- --check
-      # Run fmt on stable only for now.
-      if: matrix.toolchain == 'stable'
 
     - name: Run clippy
       run: cargo clippy -- -Dwarnings
-      # Run clippy on stable only for now. Eventually we will move to nightly.
-      if: matrix.toolchain == 'stable'
-    
+      if: matrix.toolchain == 'nightly'
+
     - name: Build
       run: cargo build --verbose
-    
+
     - name: Test
       run: cargo test --verbose

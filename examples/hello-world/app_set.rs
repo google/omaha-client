@@ -17,7 +17,7 @@ pub enum AppIdSource {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct AppMetadata {
-    // The source from which the app's ID was derived.
+    /// The source from which the app's ID was derived.
     pub appid_source: AppIdSource,
 }
 

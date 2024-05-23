@@ -64,7 +64,7 @@
 //! When modeling the time required (e.g. timer waits):
 //! * `ComplexTime` - When both wall and monotonic times are always required
 //! * `PartialComplexTime` - When some time (wall, monotonic, or both) is always required, but any
-//! or both will suffice.
+//!   or both will suffice.
 //!
 
 use chrono::{DateTime, Utc};

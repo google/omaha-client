@@ -19,7 +19,6 @@ use {
 // This implements the minimal trait requirements for a http request for the omaha state machine.
 // For a detailed implementation, see
 // https://cs.opensource.google/fuchsia/fuchsia/+/main:src/sys/pkg/lib/omaha-client-fuchsia/src/http_request.rs
-
 pub struct MinimalHttpRequest {
     timeout: Duration,
     client: Client<hyper_rustls::HttpsConnector<HttpConnector>, Body>,

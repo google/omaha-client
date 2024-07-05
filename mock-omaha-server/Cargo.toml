@@ -1,0 +1,39 @@
+# Copyright 2024 The Fuchsia Authors
+#
+# Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+# <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+# license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+# This file may not be copied, modified, or distributed except according to
+# those terms.
+
+[package]
+name = "mock-omaha-server"
+version = "0.1.0"
+edition = "2021"
+description = "Mock implementation of the server end of the Omaha Protocol"
+license = "BSD-2-Clause OR Apache-2.0 OR MIT"
+repository = "https://github.com/google/omaha-client"
+readme = "README.md"
+
+exclude = [".*"]
+
+[dependencies]
+anyhow = "1.0.75"
+argh = "0.1"
+async-net = "2.0"
+derive_builder = "0.20.0"
+futures = "0.3.19"
+hex = "0.3.2"
+hyper = { version = "0.14.19", features = ["http1", "server", "stream", "tcp"] }
+omaha_client = { path = "../omaha-client" }
+p256 = "0.11.1"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87"
+sha2 = "0.10.6"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1.37"
+url = "1.7.2"
+
+[dev-dependencies]
+proptest = "1.4.0"

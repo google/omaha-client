@@ -9,5 +9,6 @@
 [workspace]
 resolver = "2"
 members = [
+    "mock-omaha-server",
     "omaha-client",
 ]

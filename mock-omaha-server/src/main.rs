@@ -39,7 +39,7 @@ struct Args {
         option,
         description = "responses and metadata keyed by appid",
         from_str_fn(parse_responses_by_appid),
-        default = "HashMap::new()"
+        default = "parse_responses_by_appid(EXAMPLE_RESPONSES_BY_APPID).unwrap()"
     )]
     responses_by_appid: HashMap<String, ResponseAndMetadata>,
 
@@ -79,6 +79,18 @@ fn parse_responses_by_appid(value: &str) -> Result<HashMap<String, ResponseAndMe
 }
 
 pub const DEFAULT_PRIVATE_KEY_ID: i32 = 42;
+const EXAMPLE_RESPONSES_BY_APPID: &str = r#"
+{
+  "appid_01": {
+    "response": "NoUpdate",
+    "merkle": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "check_assertion": "UpdatesEnabled",
+    "version": "14.20230831.4.72",
+    "codebase": "fuchsia-pkg://omaha.mock.fuchsia.com/",
+    "package_path": "update"
+  }
+}
+"#;
 
 #[cfg_attr(fasync, fasync::run(10))]
 #[cfg_attr(feature = "tokio", tokio::main)]

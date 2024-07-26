@@ -412,6 +412,7 @@ pub async fn handle_request(
     req: Request<Body>,
     omaha_server: &Mutex<OmahaServer>,
 ) -> Result<Response<Body>, Error> {
+    tracing::debug!("{:#?}", req);
     if req.uri().path() == "/set_responses_by_appid" {
         return handle_set_responses(req, omaha_server).await;
     }

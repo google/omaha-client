@@ -12,7 +12,11 @@ use crate::hash::Hash;
 
 use anyhow::Error;
 use derive_builder::Builder;
+use futures::prelude::*;
 use hyper::body::Bytes;
+use hyper::server::accept::from_stream;
+use hyper::server::Server;
+use hyper::service::{make_service_fn, service_fn};
 use hyper::{header, Body, Method, Request, Response, StatusCode};
 use omaha_client::cup_ecdsa::test_support::{
     make_default_private_key_for_test, make_default_public_key_id_for_test,
@@ -22,27 +26,37 @@ use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::convert::Infallible;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use std::sync::Arc;
 use url::Url;
 
-#[cfg(not(target_os = "fuchsia"))]
-use tokio::sync::Mutex;
-
-#[cfg(target_os = "fuchsia")]
+#[cfg(feature = "tokio")]
 use {
-    fuchsia_async as fasync,
-    fuchsia_sync::Mutex,
-    futures::prelude::*,
-    hyper::{
-        server::{accept::from_stream, Server},
-        service::{make_service_fn, service_fn},
-    },
-    std::{
-        convert::Infallible,
-        net::{Ipv4Addr, SocketAddr},
-        sync::Arc,
-    },
+    async_net::TcpListener,
+    async_net::TcpStream,
+    std::io,
+    std::pin::Pin,
+    std::task::{Context, Poll},
+    tokio::sync::Mutex,
+    tokio::task::JoinHandle,
 };
+
+#[cfg(fasync)]
+use {fuchsia_async as fasync, fuchsia_async::Task, fuchsia_sync::Mutex};
+
+#[cfg(all(fasync, not(target_os = "fuchsia")))]
+use {
+    async_net::TcpListener,
+    async_net::TcpStream,
+    std::io,
+    std::pin::Pin,
+    std::task::{Context, Poll},
+};
+
+#[cfg(all(fasync, target_os = "fuchsia"))]
+use fuchsia_async::net::TcpListener;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum OmahaResponse {
@@ -131,6 +145,54 @@ pub enum UpdateCheckAssertion {
     UpdatesDisabled,
 }
 
+/// Adapt [async_net::TcpStream] to work with hyper.
+#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+#[derive(Debug)]
+pub enum ConnectionStream {
+    Tcp(TcpStream),
+}
+
+#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+impl tokio::io::AsyncRead for ConnectionStream {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> Poll<Result<(), std::io::Error>> {
+        match &mut *self {
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_read(cx, buf.initialize_unfilled()),
+        }
+        .map_ok(|sz| {
+            buf.advance(sz);
+        })
+    }
+}
+
+#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+impl tokio::io::AsyncWrite for ConnectionStream {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        match &mut *self {
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match &mut *self {
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match &mut *self {
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_close(cx),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Builder)]
 #[builder(pattern = "owned")]
 #[builder(derive(Debug))]
@@ -160,13 +222,33 @@ impl OmahaServer {
         }
     }
 
-    /// Spawn the server on the current executor, returning the address of the server.
-    #[cfg(target_os = "fuchsia")]
-    pub fn start(arc_server: Arc<Mutex<OmahaServer>>) -> Result<String, Error> {
-        let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0);
+    /// Start the server detached, returning the address of the server
+    pub async fn start_and_detach(
+        arc_server: Arc<Mutex<OmahaServer>>,
+        addr: Option<SocketAddr>,
+    ) -> Result<String, Error> {
+        let (addr, _server_task) = OmahaServer::start(arc_server, addr).await?;
+        #[cfg(fasync)]
+        _server_task.expect("no server task found").detach();
+
+        Ok(addr)
+    }
+
+    /// Spawn the server on the current executor, returning the address of the server and
+    /// its Task.
+    #[cfg(all(fasync, target_os = "fuchsia"))]
+    pub async fn start(
+        arc_server: Arc<Mutex<OmahaServer>>,
+        addr: Option<SocketAddr>,
+    ) -> Result<(String, Option<Task<()>>), Error> {
+        let addr = if let Some(a) = addr {
+            a
+        } else {
+            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
+        };
 
         let (connections, addr) = {
-            let listener = fasync::net::TcpListener::bind(&addr)?;
+            let listener = TcpListener::bind(&addr)?;
             let local_addr = listener.local_addr()?;
             (
                 listener
@@ -191,9 +273,89 @@ impl OmahaServer {
             .serve(make_svc)
             .unwrap_or_else(|e| panic!("error serving omaha server: {e}"));
 
-        fasync::Task::spawn(server).detach();
+        let server_task = fasync::Task::spawn(server);
+        Ok((format!("http://{addr}/"), Some(server_task)))
+    }
 
-        Ok(format!("http://{addr}/"))
+    /// Spawn the server on the current executor, returning the address of the server and
+    /// its Task.
+    #[cfg(all(fasync, not(target_os = "fuchsia")))]
+    pub async fn start(
+        arc_server: Arc<Mutex<OmahaServer>>,
+        addr: Option<SocketAddr>,
+    ) -> Result<(String, Option<Task<()>>), Error> {
+        let addr = if let Some(a) = addr {
+            a
+        } else {
+            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
+        };
+
+        let make_svc = make_service_fn(move |_socket| {
+            let arc_server = Arc::clone(&arc_server);
+            async {
+                Ok::<_, Infallible>(service_fn(move |req| {
+                    let arc_server = Arc::clone(&arc_server);
+                    async move { handle_request(req, &arc_server).await }
+                }))
+            }
+        });
+
+        let listener = TcpListener::bind(&addr)
+            .await
+            .expect("cannot bind to address");
+
+        let addr = listener.local_addr()?;
+
+        let server = async move {
+            Server::builder(from_stream(
+                listener.incoming().map_ok(ConnectionStream::Tcp),
+            ))
+            .executor(fuchsia_hyper::Executor)
+            .serve(make_svc)
+            .await
+            .unwrap_or_else(|e| panic!("error serving omaha server: {e}"));
+        };
+
+        let server_task = fasync::Task::spawn(server);
+        Ok((format!("http://{addr}/"), Some(server_task)))
+    }
+
+    /// Spawn the server on the current executor, returning the address of the server and
+    /// its JoinHandle.
+    #[cfg(feature = "tokio")]
+    pub async fn start(
+        arc_server: Arc<Mutex<OmahaServer>>,
+        addr: Option<SocketAddr>,
+    ) -> Result<(String, Option<JoinHandle<()>>), Error> {
+        let addr = if let Some(a) = addr {
+            a
+        } else {
+            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
+        };
+
+        let make_svc = make_service_fn(move |_socket| {
+            let arc_server = Arc::clone(&arc_server);
+            async {
+                Ok::<_, Infallible>(service_fn(move |req| {
+                    let arc_server = Arc::clone(&arc_server);
+                    async move { handle_request(req, &arc_server).await }
+                }))
+            }
+        });
+
+        let listener = TcpListener::bind(&addr)
+            .await
+            .expect("cannot bind to address");
+
+        let addr = listener.local_addr()?;
+
+        let server_task = tokio::spawn(async move {
+            let connections = listener.incoming().map_ok(ConnectionStream::Tcp);
+            let _ = Server::builder(from_stream(connections))
+                .serve(make_svc)
+                .await;
+        });
+        Ok((format!("http://{addr}/"), Some(server_task)))
     }
 }
 
@@ -250,6 +412,7 @@ pub async fn handle_request(
     req: Request<Body>,
     omaha_server: &Mutex<OmahaServer>,
 ) -> Result<Response<Body>, Error> {
+    tracing::debug!("{:#?}", req);
     if req.uri().path() == "/set_responses_by_appid" {
         return handle_set_responses(req, omaha_server).await;
     }
@@ -267,7 +430,10 @@ pub async fn handle_set_responses(
     let req_json: HashMap<String, ResponseAndMetadata> =
         serde_json::from_slice(&req_body).expect("parse json");
     {
+        #[cfg(feature = "tokio")]
         let mut omaha_server = omaha_server.lock().await;
+        #[cfg(fasync)]
+        let mut omaha_server = omaha_server.lock();
         omaha_server.responses_by_appid = req_json;
     }
 
@@ -281,7 +447,10 @@ pub async fn handle_omaha_request(
     req: Request<Body>,
     omaha_server: &Mutex<OmahaServer>,
 ) -> Result<Response<Body>, Error> {
+    #[cfg(feature = "tokio")]
     let omaha_server = omaha_server.lock().await;
+    #[cfg(fasync)]
+    let omaha_server = omaha_server.lock().clone();
     assert_eq!(req.method(), Method::POST);
 
     if omaha_server.responses_by_appid.is_empty() {
@@ -521,33 +690,51 @@ pub async fn handle_omaha_request(
     Ok(builder.body(Body::from(response_data)).unwrap())
 }
 
-#[cfg(target_os = "fuchsia")]
 #[cfg(test)]
 mod tests {
     use super::*;
     use anyhow::Context;
-    use fuchsia_async as fasync;
+    #[cfg(feature = "tokio")]
+    use hyper::client::HttpConnector;
+    use hyper::Client;
+    #[cfg(fasync)]
+    use {fuchsia_async as fasync, fuchsia_hyper};
 
-    #[fasync::run_singlethreaded(test)]
+    #[cfg(fasync)]
+    async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector> {
+        fuchsia_hyper::new_client()
+    }
+
+    #[cfg(feature = "tokio")]
+    async fn new_http_client() -> Client<HttpConnector> {
+        Client::new()
+    }
+
+    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
+    #[cfg_attr(feature = "tokio", tokio::test)]
     async fn test_no_validate_version() -> Result<(), Error> {
         // Send a request with no specified version and assert that we don't check.
         // See 0.0.0.1 vs 9.9.9.9 below.
-        let server = OmahaServer::start(Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid([(
-                    "integration-test-appid-1".to_string(),
-                    ResponseAndMetadata {
-                        response: OmahaResponse::NoUpdate,
-                        version: None,
-                        ..Default::default()
-                    },
-                )])
-                .build()
-                .unwrap(),
-        )))
+        let server = OmahaServer::start_and_detach(
+            Arc::new(Mutex::new(
+                OmahaServerBuilder::default()
+                    .responses_by_appid([(
+                        "integration-test-appid-1".to_string(),
+                        ResponseAndMetadata {
+                            response: OmahaResponse::NoUpdate,
+                            version: None,
+                            ..Default::default()
+                        },
+                    )])
+                    .build()
+                    .unwrap(),
+            )),
+            None,
+        )
+        .await
         .context("starting server")?;
 
-        let client = fuchsia_hyper::new_client();
+        let client = new_http_client().await;
         let body = json!({
             "request": {
                 "app": [
@@ -580,35 +767,40 @@ mod tests {
         Ok(())
     }
 
-    #[fasync::run_singlethreaded(test)]
+    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
+    #[cfg_attr(feature = "tokio", tokio::test)]
     async fn test_server_replies() -> Result<(), Error> {
-        let server_url = OmahaServer::start(Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid([
-                    (
-                        "integration-test-appid-1".to_string(),
-                        ResponseAndMetadata {
-                            response: OmahaResponse::NoUpdate,
-                            version: Some("0.0.0.1".to_string()),
-                            ..Default::default()
-                        },
-                    ),
-                    (
-                        "integration-test-appid-2".to_string(),
-                        ResponseAndMetadata {
-                            response: OmahaResponse::NoUpdate,
-                            version: Some("0.0.0.2".to_string()),
-                            ..Default::default()
-                        },
-                    ),
-                ])
-                .build()
-                .unwrap(),
-        )))
+        let server_url = OmahaServer::start_and_detach(
+            Arc::new(Mutex::new(
+                OmahaServerBuilder::default()
+                    .responses_by_appid([
+                        (
+                            "integration-test-appid-1".to_string(),
+                            ResponseAndMetadata {
+                                response: OmahaResponse::NoUpdate,
+                                version: Some("0.0.0.1".to_string()),
+                                ..Default::default()
+                            },
+                        ),
+                        (
+                            "integration-test-appid-2".to_string(),
+                            ResponseAndMetadata {
+                                response: OmahaResponse::NoUpdate,
+                                version: Some("0.0.0.2".to_string()),
+                                ..Default::default()
+                            },
+                        ),
+                    ])
+                    .build()
+                    .unwrap(),
+            )),
+            None,
+        )
+        .await
         .context("starting server")?;
 
         {
-            let client = fuchsia_hyper::new_client();
+            let client = new_http_client().await;
             let body = json!({
                 "request": {
                     "app": [
@@ -663,7 +855,7 @@ mod tests {
             let request = Request::post(format!("{server_url}set_responses_by_appid"))
                 .body(Body::from(body.to_string()))
                 .unwrap();
-            let client = fuchsia_hyper::new_client();
+            let client = new_http_client().await;
             let response = client.request(request).await?;
             assert_eq!(response.status(), StatusCode::OK);
         }
@@ -684,7 +876,7 @@ mod tests {
                 .body(Body::from(body.to_string()))
                 .unwrap();
 
-            let client = fuchsia_hyper::new_client();
+            let client = new_http_client().await;
             let response = client.request(request).await?;
 
             assert_eq!(response.status(), StatusCode::OK);
@@ -707,17 +899,22 @@ mod tests {
         Ok(())
     }
 
-    #[fasync::run_singlethreaded(test)]
+    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
+    #[cfg_attr(feature = "tokio", tokio::test)]
     async fn test_no_configured_responses() -> Result<(), Error> {
-        let server = OmahaServer::start(Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid([])
-                .build()
-                .unwrap(),
-        )))
+        let server = OmahaServer::start_and_detach(
+            Arc::new(Mutex::new(
+                OmahaServerBuilder::default()
+                    .responses_by_appid([])
+                    .build()
+                    .unwrap(),
+            )),
+            None,
+        )
+        .await
         .context("starting server")?;
 
-        let client = fuchsia_hyper::new_client();
+        let client = new_http_client().await;
         let body = json!({
             "request": {
                 "app": [
@@ -737,25 +934,30 @@ mod tests {
         Ok(())
     }
 
-    #[fasync::run_singlethreaded(test)]
+    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
+    #[cfg_attr(feature = "tokio", tokio::test)]
     async fn test_server_expect_cup_nopanic() -> Result<(), Error> {
-        let server_url = OmahaServer::start(Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid([(
-                    "integration-test-appid-1".to_string(),
-                    ResponseAndMetadata {
-                        response: OmahaResponse::NoUpdate,
-                        version: Some("0.0.0.1".to_string()),
-                        ..Default::default()
-                    },
-                )])
-                .require_cup(true)
-                .build()
-                .unwrap(),
-        )))
+        let server_url = OmahaServer::start_and_detach(
+            Arc::new(Mutex::new(
+                OmahaServerBuilder::default()
+                    .responses_by_appid([(
+                        "integration-test-appid-1".to_string(),
+                        ResponseAndMetadata {
+                            response: OmahaResponse::NoUpdate,
+                            version: Some("0.0.0.1".to_string()),
+                            ..Default::default()
+                        },
+                    )])
+                    .require_cup(true)
+                    .build()
+                    .unwrap(),
+            )),
+            None,
+        )
+        .await
         .context("starting server")?;
 
-        let client = fuchsia_hyper::new_client();
+        let client = new_http_client().await;
         let body = json!({
             "request": {
                 "app": [
@@ -782,29 +984,41 @@ mod tests {
         Ok(())
     }
 
-    #[fasync::run_singlethreaded(test)]
-    #[should_panic(expected = "configured to expect CUP")]
-    // TODO(https://fxbug.dev/42169733): delete the below
-    #[cfg_attr(feature = "variant_asan", ignore)]
+    #[cfg_attr(
+        fasync,
+        fasync::run_singlethreaded(test),
+        should_panic(expected = "configured to expect CUP")
+    )]
+    #[cfg_attr(
+        feature = "tokio",
+        tokio::test,
+        should_panic(
+            expected = "called `Result::unwrap()` on an `Err` value: hyper::Error(IncompleteMessage)"
+        )
+    )]
     async fn test_server_expect_cup_panic() {
-        let server_url = OmahaServer::start(Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid([(
-                    "integration-test-appid-1".to_string(),
-                    ResponseAndMetadata {
-                        response: OmahaResponse::NoUpdate,
-                        version: Some("0.0.0.1".to_string()),
-                        ..Default::default()
-                    },
-                )])
-                .require_cup(true)
-                .build()
-                .unwrap(),
-        )))
+        let server_url = OmahaServer::start_and_detach(
+            Arc::new(Mutex::new(
+                OmahaServerBuilder::default()
+                    .responses_by_appid([(
+                        "integration-test-appid-1".to_string(),
+                        ResponseAndMetadata {
+                            response: OmahaResponse::NoUpdate,
+                            version: Some("0.0.0.1".to_string()),
+                            ..Default::default()
+                        },
+                    )])
+                    .require_cup(true)
+                    .build()
+                    .unwrap(),
+            )),
+            None,
+        )
+        .await
         .context("starting server")
         .unwrap();
 
-        let client = fuchsia_hyper::new_client();
+        let client = new_http_client().await;
         let body = json!({
             "request": {
                 "app": [

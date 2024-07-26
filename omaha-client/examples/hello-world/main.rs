@@ -34,10 +34,10 @@ mod timer;
 
 /// Service endpoint of the omaha server to connect to.
 /// This service must be ready to respond for this example program to work.
-const SERVICE_URL: &str = "https://[::1]:35373";
+const SERVICE_URL: &str = "http://[::1]:35373";
 /// App ID of the application for which an update is checked / requested.
 /// The omaha service must know this app ID for this example program to work.
-const APP_ID: &str = "<APP ID TO BE FILLED IN>";
+const APP_ID: &str = "appid_01";
 
 #[tokio::main]
 async fn main() {

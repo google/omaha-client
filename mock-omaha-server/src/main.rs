@@ -59,7 +59,7 @@ struct Args {
     )]
     key_path: String,
 
-    #[argh(option, description = "which port to serve on", default = "35373")]
+    #[argh(option, description = "which port to serve on", default = "0")]
     port: u16,
 
     #[argh(

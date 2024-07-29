@@ -9,6 +9,7 @@
 use {
     anyhow::Error,
     app_set::{AppMetadata, MinimalAppSet},
+    argh::FromArgs,
     futures::{lock::Mutex, stream::FuturesUnordered, FutureExt as _, StreamExt},
     http_request::MinimalHttpRequest,
     metrics::MinimalMetricsReporter,
@@ -32,12 +33,20 @@ mod policy;
 mod storage;
 mod timer;
 
-/// Service endpoint of the omaha server to connect to.
-/// This service must be ready to respond for this example program to work.
-const SERVICE_URL: &str = "http://[::1]:35373";
 /// App ID of the application for which an update is checked / requested.
 /// The omaha service must know this app ID for this example program to work.
 const APP_ID: &str = "appid_01";
+
+#[derive(FromArgs)]
+/// Arguments for the omaha-client hello world example
+struct Args {
+    #[argh(
+        option,
+        short = 'u',
+        description = "URL of the omaha service to connect to, e.g. 'http://[::]:1234'. This service must accept connections."
+    )]
+    url: String,
+}
 
 #[tokio::main]
 async fn main() {
@@ -57,6 +66,8 @@ async fn main() {
 /// It interacts with the actual service used to keep Fuchsia-based smart displays
 /// updated.
 async fn main_inner() -> Result<(), Error> {
+    let args: Args = argh::from_env();
+
     // HTTP
     let http = MinimalHttpRequest::new();
 
@@ -74,7 +85,7 @@ async fn main_inner() -> Result<(), Error> {
             service_pack: "".to_string(),
             arch: "aarch64".to_string(),
         },
-        service_url: SERVICE_URL.to_string(),
+        service_url: args.url,
         omaha_public_keys: None,
     };
 

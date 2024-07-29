@@ -25,13 +25,15 @@ use {fuchsia_async as fasync, fuchsia_sync::Mutex};
 /// Arguments for mock-omaha-server.
 struct Args {
     /// A hashmap from appid to response metadata struct.
-    /// Example JSON argument:
+    /// Example JSON argument (the minimal set of required fields per appid):
     ///     {
     ///         "appid_01": {
     ///             "response": "NoUpdate",
     ///             "merkle": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
     ///             "check_assertion": "UpdatesEnabled",
     ///             "version": "0.1.2.3",
+    ///             "codebase": "fuchsia-pkg://omaha.mock.fuchsia.com/",
+    ///             "package_path": "update"
     ///         },
     ///         ...
     ///     }

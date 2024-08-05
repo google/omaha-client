@@ -8,7 +8,7 @@
 
 [package]
 name = "omaha_client"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Platform- and product-agnostic implementation of the client end of the Omaha Protocol"
 license = "BSD-2-Clause OR Apache-2.0 OR MIT"

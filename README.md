@@ -1,6 +1,6 @@
 # Omaha Client Library
 
-Updated: 2020-09
+Updated: 2024-08
 
 This is a platform- and product-agnostic implementation of the client end of the
 [Omaha Protocol](https://github.com/google/omaha/blob/HEAD/doc/ServerProtocolV3.md)
@@ -105,3 +105,14 @@ response says there is no update to be performed.
 The error cases on the right involve a need to be reported to Omaha.  They are, in order: a
 malformed response from Omaha, a response and `InstallPlan` that cannot be performed based on the
 current `PolicyData` or a `Policy` decision, or an error during the performing of an update.
+
+# Testing and development
+
+This repository comes with a "hello world" example to demonstrate how the library can be used in
+programs. More details about the example can be found in its own
+[README.md](omaha-client/examples/hello-world/README.md).
+
+This repository also contains a mock server implementation of the omaha protocol which can be used
+for end-to-end testing of programs including the http request/response schemes. The mock server is
+described in its own [README.md](mock-omaha-server/README.md), including a canonical example how
+the hello world example can be run against the mock server.

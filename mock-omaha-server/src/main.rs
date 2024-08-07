@@ -7,7 +7,6 @@
 // those terms.
 
 use argh::FromArgs;
-use async_net as _;
 use mock_omaha_server::{
     OmahaServer, OmahaServerBuilder, PrivateKeyAndId, PrivateKeys, ResponseAndMetadata,
 };

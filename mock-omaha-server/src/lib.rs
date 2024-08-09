@@ -6,10 +6,6 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
-mod hash;
-
-use crate::hash::Hash;
-
 use anyhow::Error;
 use derive_builder::Builder;
 use futures::prelude::*;
@@ -28,7 +24,6 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::str::FromStr;
 use std::sync::Arc;
 use url::Url;
 
@@ -69,30 +64,26 @@ pub enum OmahaResponse {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ResponseAndMetadata {
-    // Note: This struct is matched to the responseAndMetadata struct within
-    // https://cs.opensource.google/fuchsia/fuchsia/+/main:src/testing/host-target-testing/omaha_tool/omaha.go
     pub response: OmahaResponse,
-    pub merkle: Hash,
     pub check_assertion: UpdateCheckAssertion,
     pub version: Option<String>,
     pub cohort_assertion: Option<String>,
     pub codebase: String,
-    pub package_path: String,
+    pub package_name: String,
 }
 
 impl Default for ResponseAndMetadata {
     fn default() -> ResponseAndMetadata {
+        // This default uses examples from Fuchsia, https://fuchsia.dev/
         ResponseAndMetadata {
             response: OmahaResponse::NoUpdate,
-            merkle: Hash::from_str(
-                "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-            )
-            .unwrap(),
             check_assertion: UpdateCheckAssertion::UpdatesEnabled,
             version: Some("0.1.2.3".to_string()),
             cohort_assertion: None,
             codebase: "fuchsia-pkg://integration.test.fuchsia.com/".to_string(),
-            package_path: "update".to_string(),
+            package_name:
+                "update?hash=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+                    .to_string(),
         }
     }
 }
@@ -490,7 +481,6 @@ pub async fn handle_omaha_request(
                 assert_eq!(version, expected_version);
             }
 
-            let package_name = format!("{}?hash={}", expected.package_path, expected.merkle);
             let app = if let Some(expected_update_check) = app.get("updatecheck") {
                 let updatedisabled = expected_update_check
                     .get("updatedisabled")
@@ -530,7 +520,7 @@ pub async fn handle_omaha_request(
                             "actions": {
                                 "action": [
                                     {
-                                        "run": &package_name,
+                                        "run": &expected.package_name,
                                         "event": "install"
                                     },
                                     {
@@ -541,7 +531,7 @@ pub async fn handle_omaha_request(
                             "packages": {
                                 "package": [
                                     {
-                                        "name": &package_name,
+                                        "name": &expected.package_name,
                                         "fp": "2.0.1.2.3",
                                         "required": true
                                     }
@@ -563,7 +553,7 @@ pub async fn handle_omaha_request(
                             "actions": {
                                 "action": [
                                     {
-                                        "run": &package_name,
+                                        "run": &expected.package_name,
                                         "event": "install"
                                     },
                                     {
@@ -574,7 +564,7 @@ pub async fn handle_omaha_request(
                             "packages": {
                                 "package": [
                                     {
-                                        "name": &package_name,
+                                        "name": &expected.package_name,
                                         "fp": "2.0.1.2.3",
                                         "required": true
                                     }
@@ -603,7 +593,7 @@ pub async fn handle_omaha_request(
                             "actions": {
                                 "action": [
                                     {
-                                        "run": &package_name,
+                                        "run": &expected.package_name,
                                         "event": "install"
                                     },
                                     {
@@ -614,7 +604,7 @@ pub async fn handle_omaha_request(
                             "packages": {
                                 "package": [
                                     {
-                                        "name": &package_name,
+                                        "name": &expected.package_name,
                                         "fp": "2.0.1.2.3",
                                         "required": true
                                     }
@@ -845,11 +835,10 @@ mod tests {
             let body = json!({
                 "integration-test-appid-1": {
                     "response": "Update",
-                    "merkle": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
                     "check_assertion": "UpdatesEnabled",
                     "version": "0.0.0.1",
                     "codebase": "fuchsia-pkg://integration.test.fuchsia.com/",
-                    "package_path": "update",
+                    "package_name": "update?hash=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
                 }
             });
             let request = Request::post(format!("{server_url}set_responses_by_appid"))

@@ -28,11 +28,10 @@ struct Args {
     ///     {
     ///         "appid_01": {
     ///             "response": "NoUpdate",
-    ///             "merkle": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
     ///             "check_assertion": "UpdatesEnabled",
     ///             "version": "0.1.2.3",
     ///             "codebase": "fuchsia-pkg://omaha.mock.fuchsia.com/",
-    ///             "package_path": "update"
+    ///             "package_name": "update?hash=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
     ///         },
     ///         ...
     ///     }
@@ -84,11 +83,10 @@ const EXAMPLE_RESPONSES_BY_APPID: &str = r#"
 {
   "appid_01": {
     "response": "NoUpdate",
-    "merkle": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
     "check_assertion": "UpdatesEnabled",
     "version": "14.20230831.4.72",
     "codebase": "fuchsia-pkg://omaha.mock.fuchsia.com/",
-    "package_path": "update"
+    "package_name": "update?hash=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
   }
 }
 "#;

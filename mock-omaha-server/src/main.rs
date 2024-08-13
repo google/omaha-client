@@ -125,7 +125,8 @@ async fn main() -> Result<(), anyhow::Error> {
     if let Some(t) = task {
         #[cfg(fasync)]
         {
-            Ok(t.await)
+            t.await;
+            Ok(())
         }
         #[cfg(feature = "tokio")]
         {

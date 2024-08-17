@@ -439,7 +439,7 @@ pub async fn handle_omaha_request(
     omaha_server: &Mutex<OmahaServer>,
 ) -> Result<Response<Body>, Error> {
     #[cfg(feature = "tokio")]
-    let omaha_server = omaha_server.lock().await;
+    let omaha_server = omaha_server.lock().await.clone();
     #[cfg(fasync)]
     let omaha_server = omaha_server.lock().clone();
     assert_eq!(req.method(), Method::POST);

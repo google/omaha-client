@@ -684,11 +684,11 @@ pub async fn handle_omaha_request(
 mod tests {
     use super::*;
     use anyhow::Context;
+    #[cfg(fasync)]
+    use fuchsia_async as fasync;
     #[cfg(feature = "tokio")]
     use hyper::client::HttpConnector;
     use hyper::Client;
-    #[cfg(fasync)]
-    use {fuchsia_async as fasync, fuchsia_hyper};
 
     #[cfg(fasync)]
     async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector> {

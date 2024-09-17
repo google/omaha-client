@@ -69,7 +69,7 @@ impl Storage for MemStorage {
     type Error = StorageErrors;
 
     /// Get a string from the backing store.  Returns None if there is no value for the given key.
-    fn get_string<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<String>> {
+    fn get_string<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<String>> {
         future::ready(match self.data.get(key) {
             Some(Value::String(s)) => Some(s.clone()),
             _ => None,
@@ -78,7 +78,7 @@ impl Storage for MemStorage {
     }
 
     /// Get an int from the backing store.  Returns None if there is no value for the given key.
-    fn get_int<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<i64>> {
+    fn get_int<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<i64>> {
         future::ready(match self.data.get(key) {
             Some(Value::Int(i)) => Some(*i),
             _ => None,
@@ -87,7 +87,7 @@ impl Storage for MemStorage {
     }
 
     /// Get a boolean from the backing store.  Returns None if there is no value for the given key.
-    fn get_bool<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<bool>> {
+    fn get_bool<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<bool>> {
         future::ready(match self.data.get(key) {
             Some(Value::Bool(b)) => Some(*b),
             _ => None,
@@ -101,7 +101,7 @@ impl Storage for MemStorage {
         &'a mut self,
         key: &'a str,
         value: &'a str,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    ) -> BoxFuture<'a, Result<(), Self::Error>> {
         self.data
             .insert(key.to_string(), Value::String(value.to_string()));
         self.committed = false;
@@ -114,7 +114,7 @@ impl Storage for MemStorage {
         &'a mut self,
         key: &'a str,
         value: i64,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    ) -> BoxFuture<'a, Result<(), Self::Error>> {
         self.data.insert(key.to_string(), Value::Int(value));
         self.committed = false;
         future::ready(Ok(())).boxed()
@@ -126,13 +126,13 @@ impl Storage for MemStorage {
         &'a mut self,
         key: &'a str,
         value: bool,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    ) -> BoxFuture<'a, Result<(), Self::Error>> {
         self.data.insert(key.to_string(), Value::Bool(value));
         self.committed = false;
         future::ready(Ok(())).boxed()
     }
 
-    fn remove<'a>(&'a mut self, key: &'a str) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn remove<'a>(&'a mut self, key: &'a str) -> BoxFuture<'a, Result<(), Self::Error>> {
         self.data.remove(key);
         self.committed = false;
         future::ready(Ok(())).boxed()

@@ -131,9 +131,10 @@ impl fmt::Display for Nonce {
     }
 }
 
-/// Request decoration return type, containing request internals. Clients of this
-/// library can call .hash() and store/retrieve the hash, or they can inspect the
-/// request, public key ID, nonce used if necessary.
+/// RequestMetadata is a request decoration return type, containing request internals.
+///
+/// Clients of this library can call .hash() and store/retrieve the hash, or they
+/// can inspect the request, public key ID, nonce used if necessary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RequestMetadata {
     pub request_body: Vec<u8>,

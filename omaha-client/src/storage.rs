@@ -59,15 +59,15 @@ pub trait Storage {
 
     /// Get a string from the backing store.  Returns None if there is no value for the given key,
     /// or if the value for the key has a different type.
-    fn get_string<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<String>>;
+    fn get_string<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<String>>;
 
     /// Get an int from the backing store.  Returns None if there is no value for the given key,
     /// or if the value for the key has a different type.
-    fn get_int<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<i64>>;
+    fn get_int<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<i64>>;
 
     /// Get a boolean from the backing store.  Returns None if there is no value for the given key,
     /// or if the value for the key has a different type.
-    fn get_bool<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<bool>>;
+    fn get_bool<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<bool>>;
 
     /// Set a value to be stored in the backing store.  The implementation should cache the value
     /// until the |commit()| fn is called, and then persist all cached values at that time.
@@ -75,7 +75,7 @@ pub trait Storage {
         &'a mut self,
         key: &'a str,
         value: &'a str,
-    ) -> BoxFuture<'_, Result<(), Self::Error>>;
+    ) -> BoxFuture<'a, Result<(), Self::Error>>;
 
     /// Set a value to be stored in the backing store.  The implementation should cache the value
     /// until the |commit()| fn is called, and then persist all cached values at that time.
@@ -83,7 +83,7 @@ pub trait Storage {
         &'a mut self,
         key: &'a str,
         value: i64,
-    ) -> BoxFuture<'_, Result<(), Self::Error>>;
+    ) -> BoxFuture<'a, Result<(), Self::Error>>;
 
     /// Set a value to be stored in the backing store.  The implementation should cache the value
     /// until the |commit()| fn is called, and then persist all cached values at that time.
@@ -91,14 +91,14 @@ pub trait Storage {
         &'a mut self,
         key: &'a str,
         value: bool,
-    ) -> BoxFuture<'_, Result<(), Self::Error>>;
+    ) -> BoxFuture<'a, Result<(), Self::Error>>;
 
     /// Remove the value for |key| from the backing store.  The implementation should cache that
     /// the value has been removed until the |commit()| fn is called, and then persist all changes
     /// at that time.
     ///
     /// If there is no value for the key, this should return without error.
-    fn remove<'a>(&'a mut self, key: &'a str) -> BoxFuture<'_, Result<(), Self::Error>>;
+    fn remove<'a>(&'a mut self, key: &'a str) -> BoxFuture<'a, Result<(), Self::Error>>;
 
     /// Persist all cached values to storage.
     fn commit(&mut self) -> BoxFuture<'_, Result<(), Self::Error>>;
@@ -114,7 +114,7 @@ pub trait StorageExt: Storage {
         &'a mut self,
         key: &'a str,
         value: Option<i64>,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    ) -> BoxFuture<'a, Result<(), Self::Error>> {
         match value {
             Some(value) => self.set_int(key, value),
             None => self.remove(key),
@@ -123,7 +123,7 @@ pub trait StorageExt: Storage {
 
     /// Get a SystemTime from the backing store.  Returns None if there is no value for the given
     /// key, or if the value for the key has a different type.
-    fn get_time<'a>(&'a self, key: &'a str) -> BoxFuture<'_, Option<SystemTime>> {
+    fn get_time<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Option<SystemTime>> {
         self.get_int(key)
             .map(|option| option.map(micros_from_epoch_to_system_time))
             .boxed()
@@ -136,12 +136,12 @@ pub trait StorageExt: Storage {
         &'a mut self,
         key: &'a str,
         value: impl Into<SystemTime>,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    ) -> BoxFuture<'a, Result<(), Self::Error>> {
         self.set_option_int(key, checked_system_time_to_micros_from_epoch(value.into()))
     }
 
     /// Remove the value for |key| from the backing store, log an error message on error.
-    fn remove_or_log<'a>(&'a mut self, key: &'a str) -> BoxFuture<'_, ()> {
+    fn remove_or_log<'a>(&'a mut self, key: &'a str) -> BoxFuture<'a, ()> {
         self.remove(key)
             .unwrap_or_else(move |e| error!("Unable to remove {}: {}", key, e))
             .boxed()

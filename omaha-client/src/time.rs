@@ -137,6 +137,8 @@ impl ComplexTime {
 //
 // Implementations for `From<>` are found in `mod complex::complex_time_type_conversions`
 
+/// `PartialComplexTime` holds a value for at least one timeline.
+///
 /// `PartialComplexTime` provides a `std::interator::EitherOrBoth`-like type which is specifically
 /// for holding either one, or both, of the time types that make up a `ComplexTime`.  It's a type
 /// that holds a value for at least one of the timelines.

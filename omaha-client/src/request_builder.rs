@@ -331,6 +331,8 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
+/// Intermediate constructs an http::Request from available data.
+///
 /// As the name implies, this is an intermediate that can be used to construct an http::Request from
 /// the data that's in the Builder.  It allows for type-aware inspection of the constructed protocol
 /// request, as well as the full construction of the http request (uri, headers, body).

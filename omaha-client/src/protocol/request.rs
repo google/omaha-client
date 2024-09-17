@@ -87,9 +87,11 @@ pub struct Request {
     pub apps: Vec<App>,
 }
 
-/// This is a serialization wrapper for a Request, as a Request object serializes into a value,
-/// for an object, not an object that is '{"request": {....} }'.  This wrapper provides the request
-/// wrapping that Omaha expects to see.
+/// RequestWrapper is a serialization wrapper for a Request.
+///
+/// A Request object serializes into a value for an object,
+/// not an object that is '{"request": {....} }'.
+/// This wrapper provides the request wrapping that Omaha expects to see.
 #[derive(Debug, Default, Serialize)]
 pub struct RequestWrapper {
     pub request: Request,

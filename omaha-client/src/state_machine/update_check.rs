@@ -23,9 +23,10 @@ pub const CONSECUTIVE_FAILED_UPDATE_CHECKS: &str = "consecutive_failed_update_ch
 pub const LAST_UPDATE_TIME: &str = "last_update_time";
 pub const SERVER_DICTATED_POLL_INTERVAL: &str = "server_dictated_poll_interval";
 
-/// The Context provides the protocol context for a given update check operation.  This is
-/// information that's passed to the Policy to allow it to properly reason about what can and cannot
-/// be done at this time.
+/// The Context provides the protocol context for a given update check operation.
+///
+/// The Context provides the information that's passed to the Policy to allow
+/// it to properly reason about what can and cannot be done at this time.
 #[derive(Clone, Debug)]
 pub struct Context {
     /// The last-computed time to next check for an update.
@@ -149,9 +150,10 @@ pub struct AppResponse {
     pub result: Action,
 }
 
-/// The Action is the result of an update check for a single App.  This is just informational, for
-/// the purposes of updating the protocol state.  Any update action should already have been taken
-/// by the Installer.
+/// The Action is the result of an update check for a single App.
+///
+/// This is just informational, for the purposes of updating the protocol state.
+/// Any update action should already have been taken by the Installer.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     /// Omaha's response was "no update"

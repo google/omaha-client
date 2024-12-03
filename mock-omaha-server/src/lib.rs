@@ -21,6 +21,7 @@ use omaha_client::cup_ecdsa::PublicKeyId;
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
+use tokio::net::{TcpListener, TcpStream};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -29,8 +30,6 @@ use url::Url;
 
 #[cfg(feature = "tokio")]
 use {
-    async_net::TcpListener,
-    async_net::TcpStream,
     std::io,
     std::pin::Pin,
     std::task::{Context, Poll},
@@ -151,11 +150,8 @@ impl tokio::io::AsyncRead for ConnectionStream {
         buf: &mut tokio::io::ReadBuf<'_>,
     ) -> Poll<Result<(), std::io::Error>> {
         match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_read(cx, buf.initialize_unfilled()),
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_read(cx, buf),
         }
-        .map_ok(|sz| {
-            buf.advance(sz);
-        })
     }
 }
 
@@ -179,10 +175,25 @@ impl tokio::io::AsyncWrite for ConnectionStream {
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_close(cx),
+            ConnectionStream::Tcp(t) => Pin::new(t).poll_shutdown(cx),
         }
     }
 }
+
+
+struct TcpListenerStream(TcpListener);
+impl Stream for TcpListenerStream {
+    type Item = Result<TcpStream, std::io::Error>;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        let listener = &mut this.0;
+        match listener.poll_accept(cx) {
+            Poll::Ready(value) => Poll::Ready(Some(value.map(|(stream, _)| stream))),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 
 #[derive(Clone, Debug, Builder)]
 #[builder(pattern = "owned")]
@@ -318,6 +329,8 @@ impl OmahaServer {
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
     ) -> Result<(String, Option<JoinHandle<()>>), Error> {
+        use tokio::net::TcpListener;
+
         let addr = if let Some(a) = addr {
             a
         } else {
@@ -341,7 +354,7 @@ impl OmahaServer {
         let addr = listener.local_addr()?;
 
         let server_task = tokio::spawn(async move {
-            let connections = listener.incoming().map_ok(ConnectionStream::Tcp);
+            let connections = TcpListenerStream(listener).map_ok(ConnectionStream::Tcp);
             let _ = Server::builder(from_stream(connections))
                 .serve(make_svc)
                 .await;

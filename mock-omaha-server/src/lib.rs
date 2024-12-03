@@ -21,6 +21,7 @@ use omaha_client::cup_ecdsa::PublicKeyId;
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
+#[cfg(feature = "tokio")]
 use tokio::net::{TcpListener, TcpStream};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -42,8 +43,6 @@ use {fuchsia_async as fasync, fuchsia_async::Task, fuchsia_sync::Mutex};
 
 #[cfg(all(fasync, not(target_os = "fuchsia")))]
 use {
-    async_net::TcpListener,
-    async_net::TcpStream,
     std::io,
     std::pin::Pin,
     std::task::{Context, Poll},
@@ -135,7 +134,7 @@ pub enum UpdateCheckAssertion {
     UpdatesDisabled,
 }
 
-/// Adapt [async_net::TcpStream] to work with hyper.
+/// Adapt [tokio::net::TcpStream] to work with hyper.
 #[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
 #[derive(Debug)]
 pub enum ConnectionStream {
@@ -329,8 +328,6 @@ impl OmahaServer {
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
     ) -> Result<(String, Option<JoinHandle<()>>), Error> {
-        use tokio::net::TcpListener;
-
         let addr = if let Some(a) = addr {
             a
         } else {

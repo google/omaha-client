@@ -61,16 +61,16 @@ where
     cup_handler: Option<CH>,
 }
 
-impl<'a, PE, HR, IN, TM, MR, ST, AS, CH> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS, CH>
+impl<PE, HR, IN, TM, MR, ST, AS, CH> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS, CH>
 where
-    PE: 'a + PolicyEngine,
-    HR: 'a + HttpRequest,
-    IN: 'a + Installer,
-    TM: 'a + Timer,
-    MR: 'a + MetricsReporter,
-    ST: 'a + Storage,
-    AS: 'a + AppSet,
-    CH: 'a + Cupv2Handler,
+    PE: PolicyEngine,
+    HR: HttpRequest,
+    IN: Installer,
+    TM: Timer,
+    MR: MetricsReporter,
+    ST: Storage,
+    AS: AppSet,
+    CH: Cupv2Handler,
 {
     /// Creates a new `StateMachineBuilder` using the given trait implementations.
     #[allow(clippy::too_many_arguments)]
@@ -99,19 +99,19 @@ where
     }
 }
 
-impl<'a, PE, HR, IN, TM, MR, ST, AS, CH> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS, CH>
+impl<PE, HR, IN, TM, MR, ST, AS, CH> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS, CH>
 where
-    PE: 'a + PolicyEngine,
-    HR: 'a + HttpRequest,
-    IN: 'a + Installer,
-    TM: 'a + Timer,
-    MR: 'a + MetricsReporter,
-    ST: 'a + Storage,
-    AS: 'a + AppSet,
-    CH: 'a + Cupv2Handler,
+    PE: PolicyEngine,
+    HR: HttpRequest,
+    IN: Installer,
+    TM: Timer,
+    MR: MetricsReporter,
+    ST: Storage,
+    AS: AppSet,
+    CH: Cupv2Handler,
 {
     /// Configures the state machine to use the provided policy_engine implementation.
-    pub fn policy_engine<PE2: 'a + PolicyEngine>(
+    pub fn policy_engine<PE2: PolicyEngine>(
         self,
         policy_engine: PE2,
     ) -> StateMachineBuilder<PE2, HR, IN, TM, MR, ST, AS, CH> {
@@ -129,7 +129,7 @@ where
     }
 
     /// Configures the state machine to use the provided http implementation.
-    pub fn http<HR2: 'a + HttpRequest>(
+    pub fn http<HR2: HttpRequest>(
         self,
         http: HR2,
     ) -> StateMachineBuilder<PE, HR2, IN, TM, MR, ST, AS, CH> {
@@ -147,7 +147,7 @@ where
     }
 
     /// Configures the state machine to use the provided installer implementation.
-    pub fn installer<IN2: 'a + Installer>(
+    pub fn installer<IN2: Installer>(
         self,
         installer: IN2,
     ) -> StateMachineBuilder<PE, HR, IN2, TM, MR, ST, AS, CH> {
@@ -165,7 +165,7 @@ where
     }
 
     /// Configures the state machine to use the provided timer implementation.
-    pub fn timer<TM2: 'a + Timer>(
+    pub fn timer<TM2: Timer>(
         self,
         timer: TM2,
     ) -> StateMachineBuilder<PE, HR, IN, TM2, MR, ST, AS, CH> {
@@ -183,7 +183,7 @@ where
     }
 
     /// Configures the state machine to use the provided metrics_reporter implementation.
-    pub fn metrics_reporter<MR2: 'a + MetricsReporter>(
+    pub fn metrics_reporter<MR2: MetricsReporter>(
         self,
         metrics_reporter: MR2,
     ) -> StateMachineBuilder<PE, HR, IN, TM, MR2, ST, AS, CH> {
@@ -201,7 +201,7 @@ where
     }
 
     /// Configures the state machine to use the provided storage implementation.
-    pub fn storage<ST2: 'a + Storage>(
+    pub fn storage<ST2: Storage>(
         self,
         storage: Rc<Mutex<ST2>>,
     ) -> StateMachineBuilder<PE, HR, IN, TM, MR, ST2, AS, CH> {
@@ -225,7 +225,7 @@ where
     }
 
     /// Configures the state machine to use the provided app_set implementation.
-    pub fn app_set<AS2: 'a + AppSet>(
+    pub fn app_set<AS2: AppSet>(
         self,
         app_set: Rc<Mutex<AS2>>,
     ) -> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS2, CH> {
@@ -242,7 +242,7 @@ where
         }
     }
 
-    pub fn cup_handler<CH2: 'a + Cupv2Handler>(
+    pub fn cup_handler<CH2: Cupv2Handler>(
         self,
         cup_handler: Option<CH2>,
     ) -> StateMachineBuilder<PE, HR, IN, TM, MR, ST, AS, CH2> {

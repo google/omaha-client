@@ -168,7 +168,6 @@ pub mod tests {
     use std::time::Duration;
 
     /// These are tests for verifying that a given Storage implementation acts as expected.
-
     /// Test that the implementation stores, retrieves, and clears String values correctly.
     pub async fn do_test_set_get_remove_string<S: Storage>(storage: &mut S) {
         assert_eq!(None, storage.get_string("some key").await);

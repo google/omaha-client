@@ -75,7 +75,7 @@ impl_from!([u32; 1], [u32; 2], [u32; 3], [u32; 4]);
 
 struct VersionVisitor;
 
-impl<'de> Visitor<'de> for VersionVisitor {
+impl Visitor<'_> for VersionVisitor {
     type Value = Version;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

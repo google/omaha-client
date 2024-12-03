@@ -21,12 +21,12 @@ use omaha_client::cup_ecdsa::PublicKeyId;
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
-#[cfg(feature = "tokio")]
-use tokio::net::{TcpListener, TcpStream};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+#[cfg(feature = "tokio")]
+use tokio::net::{TcpListener, TcpStream};
 use url::Url;
 
 #[cfg(feature = "tokio")]
@@ -179,7 +179,6 @@ impl tokio::io::AsyncWrite for ConnectionStream {
     }
 }
 
-
 struct TcpListenerStream(TcpListener);
 impl Stream for TcpListenerStream {
     type Item = Result<TcpStream, std::io::Error>;
@@ -192,7 +191,6 @@ impl Stream for TcpListenerStream {
         }
     }
 }
-
 
 #[derive(Clone, Debug, Builder)]
 #[builder(pattern = "owned")]

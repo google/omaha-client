@@ -37,7 +37,7 @@ use {
     tokio::task::JoinHandle,
 };
 
-#[cfg(all(not(fasync), not(target_os="fuchsia")))]
+#[cfg(all(not(fasync), not(target_os = "fuchsia")))]
 use tokio::sync::Mutex;
 
 #[cfg(fasync)]
@@ -174,10 +174,10 @@ impl tokio::io::AsyncWrite for ConnectionStream {
     }
 }
 
-#[cfg(not(target_os="fuchsia"))]
+#[cfg(not(target_os = "fuchsia"))]
 struct TcpListenerStream(TcpListener);
 
-#[cfg(not(target_os="fuchsia"))]
+#[cfg(not(target_os = "fuchsia"))]
 impl Stream for TcpListenerStream {
     type Item = Result<TcpStream, std::io::Error>;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

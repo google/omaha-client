@@ -8,7 +8,7 @@
 
 [package]
 name = "mock-omaha-server"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 description = "Mock implementation of the server end of the Omaha Protocol"
 license = "BSD-2-Clause OR Apache-2.0 OR MIT"

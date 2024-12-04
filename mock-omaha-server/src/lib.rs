@@ -25,28 +25,23 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-#[cfg(feature = "tokio")]
+#[cfg(not(target_os = "fuchsia"))]
 use tokio::net::{TcpListener, TcpStream};
 use url::Url;
 
-#[cfg(feature = "tokio")]
+#[cfg(not(target_os = "fuchsia"))]
 use {
     std::io,
     std::pin::Pin,
     std::task::{Context, Poll},
-    tokio::sync::Mutex,
     tokio::task::JoinHandle,
 };
 
+#[cfg(all(not(fasync), not(target_os = "fuchsia")))]
+use tokio::sync::Mutex;
+
 #[cfg(fasync)]
 use {fuchsia_async as fasync, fuchsia_async::Task, fuchsia_sync::Mutex};
-
-#[cfg(all(fasync, not(target_os = "fuchsia")))]
-use {
-    std::io,
-    std::pin::Pin,
-    std::task::{Context, Poll},
-};
 
 #[cfg(all(fasync, target_os = "fuchsia"))]
 use fuchsia_async::net::TcpListener;
@@ -135,13 +130,13 @@ pub enum UpdateCheckAssertion {
 }
 
 /// Adapt [tokio::net::TcpStream] to work with hyper.
-#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+#[cfg(not(target_os = "fuchsia"))]
 #[derive(Debug)]
 pub enum ConnectionStream {
     Tcp(TcpStream),
 }
 
-#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+#[cfg(not(target_os = "fuchsia"))]
 impl tokio::io::AsyncRead for ConnectionStream {
     fn poll_read(
         mut self: Pin<&mut Self>,
@@ -154,7 +149,7 @@ impl tokio::io::AsyncRead for ConnectionStream {
     }
 }
 
-#[cfg(any(feature = "tokio", all(fasync, not(target_os = "fuchsia"))))]
+#[cfg(not(target_os = "fuchsia"))]
 impl tokio::io::AsyncWrite for ConnectionStream {
     fn poll_write(
         mut self: Pin<&mut Self>,
@@ -179,7 +174,10 @@ impl tokio::io::AsyncWrite for ConnectionStream {
     }
 }
 
+#[cfg(not(target_os = "fuchsia"))]
 struct TcpListenerStream(TcpListener);
+
+#[cfg(not(target_os = "fuchsia"))]
 impl Stream for TcpListenerStream {
     type Item = Result<TcpStream, std::io::Error>;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -307,7 +305,7 @@ impl OmahaServer {
 
         let server = async move {
             Server::builder(from_stream(
-                listener.incoming().map_ok(ConnectionStream::Tcp),
+                TcpListenerStream(listener).map_ok(ConnectionStream::Tcp),
             ))
             .executor(fuchsia_hyper::Executor)
             .serve(make_svc)

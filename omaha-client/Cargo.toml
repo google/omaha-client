@@ -18,23 +18,23 @@ readme = "README.md"
 exclude = [".*"]
 
 [dependencies]
-anyhow = "1.0.75"
-chrono = "0.4.19"
+anyhow = "1.0"
+chrono = "0.4"
 ecdsa =  { version = "0.14.8", features = ["pem"] }
 elliptic-curve = "0.12.3"
-futures = "0.3.19"
-hex = "0.3.2"
+futures = "0.3"
+hex = "0.4"
 http = "0.2.4"
 hyper = "0.14.19"
-itertools = "0.10.1"
-p256 = "0.11.1"
+itertools = "0.10"
+p256 = "0.11"
 pkcs8 = { version = "0.9.0", features = ["pem"] }
 pretty_assertions = "1.2.1"
 rand = "0.8.4"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
 serde_repr = "0.1.7"
-sha2 = "0.10.6"
+sha2 = "0.10"
 signature = "1.6.4"
 thiserror = "1.0"
 tracing = "0.1.37"
@@ -45,7 +45,7 @@ pin-project = "1.0.11"
 [dev-dependencies]
 argh = "0.1"
 assert_matches = "1.5.0"
-futures-timer = "0.3.0"
+futures-timer = "0.3"
 hyper-rustls = { version = "0.25", features = ["http2"] }
 tokio = { version = "1", features = ["full"] }
-url = "1.7.2"
+url = "1.7"

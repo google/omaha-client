@@ -26,43 +26,35 @@ pub enum StubErrors {
 impl Storage for StubStorage {
     type Error = StubErrors;
 
-    fn get_string<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<String>> {
+    fn get_string<'a>(&self, _key: &str) -> BoxFuture<'_, Option<String>> {
         future::ready(None).boxed()
     }
 
-    fn get_int<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<i64>> {
+    fn get_int<'a>(&self, _key: &str) -> BoxFuture<'_, Option<i64>> {
         future::ready(None).boxed()
     }
 
-    fn get_bool<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<bool>> {
+    fn get_bool<'a>(&self, _key: &str) -> BoxFuture<'_, Option<bool>> {
         future::ready(None).boxed()
     }
 
     fn set_string<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: &'a str,
+        &mut self,
+        _key: &str,
+        _value: &str,
     ) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(StubErrors::Intentional)).boxed()
     }
 
-    fn set_int<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: i64,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn set_int<'a>(&mut self, _key: &str, _value: i64) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(StubErrors::Intentional)).boxed()
     }
 
-    fn set_bool<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: bool,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn set_bool<'a>(&mut self, _key: &str, _value: bool) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(StubErrors::Intentional)).boxed()
     }
 
-    fn remove<'a>(&'a mut self, _key: &'a str) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn remove<'a>(&mut self, _key: &str) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(StubErrors::Intentional)).boxed()
     }
 

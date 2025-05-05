@@ -24,43 +24,31 @@ pub enum MinimalErrors {
 impl Storage for MinimalStorage {
     type Error = MinimalErrors;
 
-    fn get_string<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<String>> {
+    fn get_string(&self, _key: &str) -> BoxFuture<'_, Option<String>> {
         future::ready(None).boxed()
     }
 
-    fn get_int<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<i64>> {
+    fn get_int(&self, _key: &str) -> BoxFuture<'_, Option<i64>> {
         future::ready(None).boxed()
     }
 
-    fn get_bool<'a>(&'a self, _key: &'a str) -> BoxFuture<'_, Option<bool>> {
+    fn get_bool(&self, _key: &str) -> BoxFuture<'_, Option<bool>> {
         future::ready(None).boxed()
     }
 
-    fn set_string<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: &'a str,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn set_string(&mut self, _key: &str, _value: &str) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(MinimalErrors::Intentional)).boxed()
     }
 
-    fn set_int<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: i64,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn set_int(&mut self, _key: &str, _value: i64) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(MinimalErrors::Intentional)).boxed()
     }
 
-    fn set_bool<'a>(
-        &'a mut self,
-        _key: &'a str,
-        _value: bool,
-    ) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn set_bool(&mut self, _key: &str, _value: bool) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(MinimalErrors::Intentional)).boxed()
     }
 
-    fn remove<'a>(&'a mut self, _key: &'a str) -> BoxFuture<'_, Result<(), Self::Error>> {
+    fn remove(&mut self, _key: &str) -> BoxFuture<'_, Result<(), Self::Error>> {
         future::ready(Err(MinimalErrors::Intentional)).boxed()
     }
 

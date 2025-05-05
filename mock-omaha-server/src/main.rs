@@ -120,7 +120,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    println!("listening on {}", local_addr);
+    println!("listening on {local_addr}");
 
     if let Some(t) = task {
         #[cfg(fasync)]

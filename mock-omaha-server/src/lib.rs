@@ -379,7 +379,7 @@ fn make_etag(
     let private_key: &PrivateKey = match private_keys.find(public_key_id) {
         Some(pk) => Some(pk),
         None => {
-            tracing::error!(
+            log::error!(
                 "Could not find public_key_id {:?} in the private_keys map, which only knows about the latest key_id {:?} and the historical key_ids {:?}",
                 public_key_id,
                 private_keys.latest.id,
@@ -409,7 +409,7 @@ pub async fn handle_request(
     req: Request<Body>,
     omaha_server: &Mutex<OmahaServer>,
 ) -> Result<Response<Body>, Error> {
-    tracing::debug!("{:#?}", req);
+    log::debug!("{req:#?}");
     if req.uri().path() == "/set_responses_by_appid" {
         return handle_set_responses(req, omaha_server).await;
     }
@@ -454,7 +454,7 @@ pub async fn handle_omaha_request(
         let builder = Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header(header::CONTENT_LENGTH, 0);
-        tracing::error!("Received a request before |responses_by_appid| was set; returning an empty response with status 500.");
+        log::error!("Received a request before |responses_by_appid| was set; returning an empty response with status 500.");
         return Ok(builder.body(Body::empty()).unwrap());
     }
 

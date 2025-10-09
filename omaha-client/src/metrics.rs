@@ -53,8 +53,6 @@ pub enum Metrics {
     /// running that software, it is sent after the reboot (and includes the
     /// rebooting time).
     WaitedForRebootDuration(Duration),
-    /// Number of times an update failed to boot into new version.
-    FailedBootAttempts(u64),
     /// Record that an Omaha event report was lost.
     OmahaEventLost(Event),
 }

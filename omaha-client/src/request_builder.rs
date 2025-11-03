@@ -22,10 +22,10 @@ use crate::{
     },
 };
 use http;
+use log::{info, warn};
 use std::fmt::Display;
 use std::result;
 use thiserror::Error;
-use tracing::*;
 
 type ProtocolApp = crate::protocol::request::App;
 

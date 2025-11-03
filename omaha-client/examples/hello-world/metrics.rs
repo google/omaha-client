@@ -7,8 +7,8 @@
 // those terms.
 
 use anyhow::Error;
+use log::info;
 use omaha_client::metrics::{Metrics, MetricsReporter};
-use tracing::info;
 
 /// A minimal implementation of MetricsReporter which only log metrics.
 /// Similar to the Stub in the omaha-client lib, but derives clone.

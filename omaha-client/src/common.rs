@@ -15,11 +15,11 @@ use crate::{
     time::PartialComplexTime,
     version::Version,
 };
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::time::Duration;
-use tracing::error;
 use typed_builder::TypedBuilder;
 
 /// Omaha has historically supported multiple methods of counting devices.  Currently, the

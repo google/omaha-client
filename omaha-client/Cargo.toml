@@ -8,7 +8,7 @@
 
 [package]
 name = "omaha_client"
-version = "0.2.3"
+version = "0.3.7"
 edition = "2021"
 description = "Platform- and product-agnostic implementation of the client end of the Omaha Protocol"
 license = "BSD-2-Clause OR Apache-2.0 OR MIT"
@@ -27,20 +27,20 @@ hex = "0.4"
 http = "0.2.4"
 hyper = "0.14.19"
 itertools = "0.14"
+log = "0.4"
 p256 = "0.11"
 pkcs8 = { version = "0.9", features = ["pem"] }
 pretty_assertions = "1.2.1"
 rand = "0.8"
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.128"
-serde_repr = "0.1.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_repr = "0.1"
 sha2 = "0.10"
 signature = "1.6.4"
 thiserror = "2.0"
-tracing = "0.1"
-typed-builder = "0.10.0"
+typed-builder = "0.21"
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
-pin-project = "1.0.11"
+pin-project = "1.1"
 
 [dev-dependencies]
 argh = "0.1"
@@ -48,4 +48,4 @@ assert_matches = "1.5.0"
 futures-timer = "0.3"
 hyper-rustls = { version = "0.25", features = ["http2"] }
 tokio = { version = "1", features = ["full"] }
-url = "1.7"
+url = "2"

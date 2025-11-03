@@ -12,6 +12,7 @@ use {
     argh::FromArgs,
     futures::{lock::Mutex, stream::FuturesUnordered, FutureExt as _, StreamExt},
     http_request::MinimalHttpRequest,
+    log::{error, info},
     metrics::MinimalMetricsReporter,
     omaha_client::{
         common::App,
@@ -22,7 +23,6 @@ use {
         time::StandardTimeSource,
     },
     std::rc::Rc,
-    tracing,
 };
 
 mod app_set;
@@ -50,14 +50,14 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    tracing::info!("Starting omaha client...");
+    info!("Starting omaha client...");
 
     if let Err(e) = main_inner().await {
-        tracing::error!("Error running omaha-client: {:#}", e);
+        error!("Error running omaha-client: {:#}", e);
         std::process::exit(1);
     }
 
-    tracing::info!("Shutting down omaha client...");
+    info!("Shutting down omaha client...");
 }
 
 /// This demo code sets up a minimal set of structures to get the omaha-client lib's
@@ -149,7 +149,7 @@ async fn main_inner() -> Result<(), Error> {
     let installer = installer::MinimalInstaller { should_fail: false };
 
     // Metrics
-    // Using the minimal reporter for this example. It only logs metrics via tracing::info.
+    // Using the minimal reporter for this example. It only logs metrics via log::info.
     let metrics_reporter = MinimalMetricsReporter;
 
     // Storage

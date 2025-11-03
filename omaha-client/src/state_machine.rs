@@ -35,6 +35,7 @@ use futures::{
     select,
 };
 use http::{response::Parts, Response as HttpResponse};
+use log::{error, info, warn};
 use p256::ecdsa::DerSignature;
 use std::{
     cmp::min,
@@ -45,7 +46,6 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 use thiserror::Error;
-use tracing::{error, info, warn};
 
 pub mod update_check;
 
@@ -1606,7 +1606,6 @@ mod tests {
     use serde_json::json;
     use std::cell::RefCell;
     use std::time::Duration;
-    use tracing::info;
 
     fn make_test_app_set() -> Rc<Mutex<VecAppSet>> {
         Rc::new(Mutex::new(VecAppSet::new(vec![App::builder()

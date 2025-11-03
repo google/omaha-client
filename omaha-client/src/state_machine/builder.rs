@@ -293,7 +293,7 @@ where
                 app_set.load(&*storage),
                 update_check::Context::load(&*storage)
             );
-            tracing::info!("Omaha app set: {:?}", app_set.get_apps());
+            log::info!("Omaha app set: {:?}", app_set.get_apps());
             context
         };
 

@@ -84,6 +84,7 @@ impl Policy for MinimalPolicy {
 
 pub struct MinimalPolicyEngine<T> {
     time_source: T,
+    #[expect(dead_code)]
     metrics: MinimalMetricsReporter,
 }
 

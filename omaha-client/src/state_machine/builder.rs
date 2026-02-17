@@ -16,7 +16,7 @@ use crate::{
     metrics::MetricsReporter,
     policy::PolicyEngine,
     request_builder::RequestParams,
-    state_machine::{update_check, ControlHandle, StateMachine, StateMachineEvent},
+    state_machine::{ControlHandle, StateMachine, StateMachineEvent, update_check},
     storage::Storage,
     time::Timer,
 };
@@ -34,7 +34,7 @@ use crate::{
     policy::StubPolicyEngine,
     state_machine::{RebootAfterUpdate, UpdateCheckError},
     storage::StubStorage,
-    time::{timers::StubTimer, MockTimeSource},
+    time::{MockTimeSource, timers::StubTimer},
 };
 
 /// Helper type to build/start a [`StateMachine`].
@@ -368,11 +368,13 @@ impl
     pub fn new_stub() -> Self {
         let config = crate::configuration::test_support::config_generator();
 
-        let app_set = VecAppSet::new(vec![App::builder()
-            .id("{00000000-0000-0000-0000-000000000001}")
-            .version([1, 2, 3, 4])
-            .cohort(crate::protocol::Cohort::new("stable-channel"))
-            .build()]);
+        let app_set = VecAppSet::new(vec![
+            App::builder()
+                .id("{00000000-0000-0000-0000-000000000001}")
+                .version([1, 2, 3, 4])
+                .cohort(crate::protocol::Cohort::new("stable-channel"))
+                .build(),
+        ]);
         let mock_time = MockTimeSource::new_from_now();
 
         StateMachineBuilder::new(

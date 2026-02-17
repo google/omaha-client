@@ -6,11 +6,11 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 use {
-    futures::{future::BoxFuture, FutureExt as _},
+    futures::{FutureExt as _, future::BoxFuture},
     hyper::{
+        Client, Request, Response,
         body::Body,
         client::{HttpConnector, ResponseFuture},
-        Client, Request, Response,
     },
     omaha_client::http_request::{Error, HttpRequest},
     std::time::Duration,

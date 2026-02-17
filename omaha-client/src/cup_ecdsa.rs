@@ -9,10 +9,10 @@
 use crate::http_uri_ext::HttpUriExt as _;
 use http::{Response, Uri};
 use hyper::header::ETAG;
-use p256::ecdsa::{signature::Verifier as _, DerSignature};
-use rand::{thread_rng, Rng};
+use p256::ecdsa::{DerSignature, signature::Verifier as _};
+use rand::{Rng, thread_rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use sha2::{digest, Digest, Sha256};
+use sha2::{Digest, Sha256, digest};
 use signature::Signature;
 use std::{collections::HashMap, convert::TryInto, fmt, fmt::Debug};
 
@@ -842,15 +842,21 @@ mod tests {
 
         // finally, assert that verification fails if either (1) the hash, (2)
         // the stored response, or (3) the key ID itself is wrong.
-        assert!(cup_handler
-            .verify_response(&request_metadata_a, &response_a, public_key_id_b)
-            .is_err());
-        assert!(cup_handler
-            .verify_response(&request_metadata_a, &response_b, public_key_id_a)
-            .is_err());
-        assert!(cup_handler
-            .verify_response(&request_metadata_b, &response_a, public_key_id_a)
-            .is_err());
+        assert!(
+            cup_handler
+                .verify_response(&request_metadata_a, &response_a, public_key_id_b)
+                .is_err()
+        );
+        assert!(
+            cup_handler
+                .verify_response(&request_metadata_a, &response_b, public_key_id_a)
+                .is_err()
+        );
+        assert!(
+            cup_handler
+                .verify_response(&request_metadata_b, &response_a, public_key_id_a)
+                .is_err()
+        );
 
         Ok(())
     }

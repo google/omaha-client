@@ -9,10 +9,10 @@
 use super::*;
 use crate::{
     configuration::test_support::config_generator,
-    cup_ecdsa::{test_support::make_cup_handler_for_test, StandardCupv2Handler},
+    cup_ecdsa::{StandardCupv2Handler, test_support::make_cup_handler_for_test},
     protocol::{
-        request::{EventErrorCode, EventResult, EventType},
         Cohort,
+        request::{EventErrorCode, EventResult, EventType},
     },
 };
 use futures::executor::block_on;

@@ -163,7 +163,7 @@ mod mock {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use futures::executor::{block_on, LocalPool};
+        use futures::executor::{LocalPool, block_on};
         use futures::task::LocalSpawnExt;
         use std::time::Duration;
 

@@ -8,7 +8,7 @@
 
 use crate::installer::{MinimalInstallPlan, MinimalInstallResult};
 use crate::metrics::MinimalMetricsReporter;
-use futures::{future::BoxFuture, FutureExt as _};
+use futures::{FutureExt as _, future::BoxFuture};
 use omaha_client::{
     common::{App, CheckOptions, CheckTiming, ProtocolState, UpdateCheckSchedule},
     policy::{CheckDecision, Policy, PolicyEngine, UpdateDecision},

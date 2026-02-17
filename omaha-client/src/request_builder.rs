@@ -14,11 +14,11 @@ use crate::{
     configuration::Config,
     cup_ecdsa::{CupDecorationError, CupRequest, Cupv2RequestHandler, RequestMetadata},
     protocol::{
-        request::{
-            Event, InstallSource, Ping, Request, RequestWrapper, UpdateCheck, GUID, HEADER_APP_ID,
-            HEADER_INTERACTIVITY, HEADER_UPDATER_NAME,
-        },
         PROTOCOL_V3,
+        request::{
+            Event, GUID, HEADER_APP_ID, HEADER_INTERACTIVITY, HEADER_UPDATER_NAME, InstallSource,
+            Ping, Request, RequestWrapper, UpdateCheck,
+        },
     },
 };
 use http;

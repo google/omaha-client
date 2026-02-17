@@ -8,8 +8,8 @@
 
 [package]
 name = "mock-omaha-server"
-version = "0.3.7"
-edition = "2021"
+version = "0.3.8"
+edition = "2024"
 description = "Mock implementation of the server end of the Omaha Protocol"
 license = "BSD-2-Clause OR Apache-2.0 OR MIT"
 repository = "https://github.com/google/omaha-client"

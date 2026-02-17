@@ -7,7 +7,7 @@
 // those terms.
 
 use crate::metrics::{Metrics, MetricsReporter};
-use anyhow::{format_err, Error};
+use anyhow::{Error, format_err};
 
 /// A mock implementation of MetricsReporter save the metrics into a vector.
 #[derive(Debug)]

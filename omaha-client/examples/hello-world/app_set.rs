@@ -10,7 +10,9 @@ use omaha_client::{app_set::AppSet, common::App};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AppIdSource {
+    #[expect(dead_code)]
     VbMetadata,
+    #[expect(dead_code)]
     ChannelConfig,
     DefaultEmpty,
 }
@@ -36,6 +38,7 @@ impl MinimalAppSet {
 
     /// Get the system product id.
     /// Returns empty string if product id not set for the system app.
+    #[expect(dead_code)]
     pub fn get_system_product_id(&self) -> &str {
         self.system_app
             .extra_fields
@@ -46,20 +49,24 @@ impl MinimalAppSet {
 
     /// Get the current channel name from cohort name, returns empty string if no cohort name set
     /// for the app.
+    #[expect(dead_code)]
     pub fn get_system_current_channel(&self) -> &str {
         self.system_app.get_current_channel()
     }
 
     /// Get the target channel name from cohort hint, fallback to current channel if no hint.
+    #[expect(dead_code)]
     pub fn get_system_target_channel(&self) -> &str {
         self.system_app.get_target_channel()
     }
 
     /// Set the cohort hint of system app to |channel| and |id|.
+    #[expect(dead_code)]
     pub fn set_system_target_channel(&mut self, channel: Option<String>, id: Option<String>) {
         self.system_app.set_target_channel(channel, id);
     }
 
+    #[expect(dead_code)]
     pub fn get_system_app_metadata(&self) -> &AppMetadata {
         &self.system_app_metadata
     }

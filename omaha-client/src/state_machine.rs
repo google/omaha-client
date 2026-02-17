@@ -18,8 +18,8 @@ use crate::{
     policy::{CheckDecision, PolicyEngine, UpdateDecision},
     protocol::{
         self,
-        request::{Event, EventErrorCode, EventResult, EventType, InstallSource, GUID},
-        response::{parse_json_response, OmahaStatus, Response, UpdateCheck},
+        request::{Event, EventErrorCode, EventResult, EventType, GUID, InstallSource},
+        response::{OmahaStatus, Response, UpdateCheck, parse_json_response},
     },
     request_builder::{self, RequestBuilder, RequestParams},
     storage::{Storage, StorageExt},
@@ -34,7 +34,7 @@ use futures::{
     prelude::*,
     select,
 };
-use http::{response::Parts, Response as HttpResponse};
+use http::{Response as HttpResponse, response::Parts};
 use log::{error, info, warn};
 use p256::ecdsa::DerSignature;
 use std::{
@@ -323,12 +323,11 @@ where
         let update_finish_time = {
             let storage = self.storage_ref.lock().await;
             let update_finish_time = storage.get_time(UPDATE_FINISH_TIME).await;
-            if update_finish_time.is_some() {
-                if let Some(target_version) = storage.get_string(TARGET_VERSION).await {
-                    if target_version == self.config.os.version {
-                        should_report_waited_for_reboot_duration = true;
-                    }
-                }
+            if update_finish_time.is_some()
+                && let Some(target_version) = storage.get_string(TARGET_VERSION).await
+                && target_version == self.config.os.version
+            {
+                should_report_waited_for_reboot_duration = true;
             }
             update_finish_time
         };
@@ -1499,13 +1498,13 @@ where
     ) -> SystemTime {
         let mut storage = self.storage_ref.lock().await;
         let previous_id = storage.get_string(INSTALL_PLAN_ID).await;
-        if let Some(previous_id) = previous_id {
-            if previous_id == install_plan_id {
-                return storage
-                    .get_time(UPDATE_FIRST_SEEN_TIME)
-                    .await
-                    .unwrap_or(now);
-            }
+        if let Some(previous_id) = previous_id
+            && previous_id == install_plan_id
+        {
+            return storage
+                .get_time(UPDATE_FIRST_SEEN_TIME)
+                .await
+                .unwrap_or(now);
         }
         // Update INSTALL_PLAN_ID and UPDATE_FIRST_SEEN_TIME for new update.
         if let Err(e) = storage.set_string(INSTALL_PLAN_ID, install_plan_id).await {
@@ -1582,24 +1581,24 @@ mod tests {
             App, CheckOptions, PersistedApp, ProtocolState, UpdateCheckSchedule, UserCounting,
         },
         configuration::Updater,
-        cup_ecdsa::test_support::{make_cup_handler_for_test, MockCupv2Handler},
+        cup_ecdsa::test_support::{MockCupv2Handler, make_cup_handler_for_test},
         http_request::mock::MockHttpRequest,
         installer::{
-            stub::{StubInstallErrors, StubInstaller, StubPlan},
             ProgressObserver,
+            stub::{StubInstallErrors, StubInstaller, StubPlan},
         },
         metrics::MockMetricsReporter,
         policy::{MockPolicyEngine, StubPolicyEngine},
-        protocol::{request::OS, response, Cohort},
+        protocol::{Cohort, request::OS, response},
         storage::MemStorage,
         time::{
-            timers::{BlockingTimer, MockTimer, RequestedWait},
             MockTimeSource, PartialComplexTime,
+            timers::{BlockingTimer, MockTimer, RequestedWait},
         },
         version::Version,
     };
     use assert_matches::assert_matches;
-    use futures::executor::{block_on, LocalPool};
+    use futures::executor::{LocalPool, block_on};
     use futures::future::LocalBoxFuture;
     use futures::task::LocalSpawnExt;
     use pretty_assertions::assert_eq;
@@ -1608,11 +1607,13 @@ mod tests {
     use std::time::Duration;
 
     fn make_test_app_set() -> Rc<Mutex<VecAppSet>> {
-        Rc::new(Mutex::new(VecAppSet::new(vec![App::builder()
-            .id("{00000000-0000-0000-0000-000000000001}")
-            .version([1, 2, 3, 4])
-            .cohort(Cohort::new("stable-channel"))
-            .build()])))
+        Rc::new(Mutex::new(VecAppSet::new(vec![
+            App::builder()
+                .id("{00000000-0000-0000-0000-000000000001}")
+                .version([1, 2, 3, 4])
+                .cohort(Cohort::new("stable-channel"))
+                .build(),
+        ])))
     }
 
     fn make_update_available_response() -> HttpResponse<Vec<u8>> {
@@ -2498,12 +2499,14 @@ mod tests {
                 .oneshot(RequestParams::default())
                 .await;
 
-            assert!(metrics_reporter
-                .metrics
-                .contains(&Metrics::RequestsPerCheck {
-                    count: 1,
-                    successful: true
-                }));
+            assert!(
+                metrics_reporter
+                    .metrics
+                    .contains(&Metrics::RequestsPerCheck {
+                        count: 1,
+                        successful: true
+                    })
+            );
         });
     }
 
@@ -2526,12 +2529,14 @@ mod tests {
                 .await;
 
             assert!(!metrics_reporter.metrics.is_empty());
-            assert!(metrics_reporter
-                .metrics
-                .contains(&Metrics::RequestsPerCheck {
-                    count: MAX_OMAHA_REQUEST_ATTEMPTS,
-                    successful: true
-                }));
+            assert!(
+                metrics_reporter
+                    .metrics
+                    .contains(&Metrics::RequestsPerCheck {
+                        count: MAX_OMAHA_REQUEST_ATTEMPTS,
+                        successful: true
+                    })
+            );
         });
     }
 
@@ -2555,12 +2560,14 @@ mod tests {
                 .await;
 
             assert!(!metrics_reporter.metrics.is_empty());
-            assert!(metrics_reporter
-                .metrics
-                .contains(&Metrics::RequestsPerCheck {
-                    count: MAX_OMAHA_REQUEST_ATTEMPTS,
-                    successful: false
-                }));
+            assert!(
+                metrics_reporter
+                    .metrics
+                    .contains(&Metrics::RequestsPerCheck {
+                        count: MAX_OMAHA_REQUEST_ATTEMPTS,
+                        successful: false
+                    })
+            );
         });
     }
 
@@ -2608,11 +2615,13 @@ mod tests {
 
             state_machine.run_once().await;
 
-            assert!(metrics_reporter
-                .metrics
-                .contains(&Metrics::UpdateCheckFailureReason(
-                    UpdateCheckFailureReason::Omaha
-                )));
+            assert!(
+                metrics_reporter
+                    .metrics
+                    .contains(&Metrics::UpdateCheckFailureReason(
+                        UpdateCheckFailureReason::Omaha
+                    ))
+            );
         });
     }
 
@@ -2628,11 +2637,13 @@ mod tests {
 
             state_machine.run_once().await;
 
-            assert!(metrics_reporter
-                .metrics
-                .contains(&Metrics::UpdateCheckFailureReason(
-                    UpdateCheckFailureReason::Network
-                )));
+            assert!(
+                metrics_reporter
+                    .metrics
+                    .contains(&Metrics::UpdateCheckFailureReason(
+                        UpdateCheckFailureReason::Network
+                    ))
+            );
         });
     }
 
@@ -2866,10 +2877,12 @@ mod tests {
     #[test]
     fn test_load_app() {
         block_on(async {
-            let app_set = VecAppSet::new(vec![App::builder()
-                .id("{00000000-0000-0000-0000-000000000001}")
-                .version([1, 2, 3, 4])
-                .build()]);
+            let app_set = VecAppSet::new(vec![
+                App::builder()
+                    .id("{00000000-0000-0000-0000-000000000001}")
+                    .version([1, 2, 3, 4])
+                    .build(),
+            ]);
             let mut storage = MemStorage::new();
             let persisted_app = PersistedApp {
                 cohort: Cohort {
@@ -3148,10 +3161,12 @@ mod tests {
 
             state_machine.run_once().await;
 
-            assert!(state_machine
-                .metrics_reporter
-                .metrics
-                .contains(&Metrics::FailedUpdateDuration(Duration::from_micros(0))));
+            assert!(
+                state_machine
+                    .metrics_reporter
+                    .metrics
+                    .contains(&Metrics::FailedUpdateDuration(Duration::from_micros(0)))
+            );
         });
     }
 
@@ -4036,7 +4051,10 @@ mod tests {
     }
 
     impl TestObserver {
-        fn observe(&self, s: impl Stream<Item = StateMachineEvent>) -> impl Future<Output = ()> {
+        fn observe<T: Stream<Item = StateMachineEvent>>(
+            &self,
+            s: T,
+        ) -> impl Future<Output = ()> + use<T> {
             let states = Rc::clone(&self.states);
             async move {
                 futures::pin_mut!(s);
@@ -4048,10 +4066,10 @@ mod tests {
             }
         }
 
-        fn observe_until_terminal(
+        fn observe_until_terminal<T: Stream<Item = StateMachineEvent>>(
             &self,
-            s: impl Stream<Item = StateMachineEvent>,
-        ) -> impl Future<Output = ()> {
+            s: T,
+        ) -> impl Future<Output = ()> + use<T> {
             let states = Rc::clone(&self.states);
             async move {
                 futures::pin_mut!(s);

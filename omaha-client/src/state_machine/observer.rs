@@ -10,7 +10,7 @@ use crate::{
     common::{ProtocolState, UpdateCheckSchedule},
     installer::ProgressObserver,
     protocol::response::Response,
-    state_machine::{update_check, State, UpdateCheckError},
+    state_machine::{State, UpdateCheckError, update_check},
 };
 use futures::{channel::mpsc, future::BoxFuture, prelude::*};
 

@@ -6,7 +6,7 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
-use futures::{future::BoxFuture, FutureExt as _};
+use futures::{FutureExt as _, future::BoxFuture};
 use omaha_client::time::{PartialComplexTime, Timer};
 use std::time::{Duration, SystemTime};
 

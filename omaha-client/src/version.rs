@@ -9,8 +9,8 @@
 use {
     itertools::Itertools,
     serde::{
-        de::{self, Visitor},
         Deserialize, Deserializer, Serialize, Serializer,
+        de::{self, Visitor},
     },
     std::{fmt, str::FromStr},
 };

@@ -10,7 +10,7 @@
 //! library.  Many of these don't belong to a specific sub-module.
 
 use crate::{
-    protocol::{self, request::InstallSource, Cohort},
+    protocol::{self, Cohort, request::InstallSource},
     storage::Storage,
     time::PartialComplexTime,
     version::Version,

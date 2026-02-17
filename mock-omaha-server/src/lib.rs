@@ -10,14 +10,14 @@ use anyhow::Error;
 use derive_builder::Builder;
 use futures::prelude::*;
 use hyper::body::Bytes;
-use hyper::server::accept::from_stream;
 use hyper::server::Server;
+use hyper::server::accept::from_stream;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{header, Body, Method, Request, Response, StatusCode};
+use hyper::{Body, Method, Request, Response, StatusCode, header};
+use omaha_client::cup_ecdsa::PublicKeyId;
 use omaha_client::cup_ecdsa::test_support::{
     make_default_private_key_for_test, make_default_public_key_id_for_test,
 };
-use omaha_client::cup_ecdsa::PublicKeyId;
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -383,8 +383,12 @@ fn make_etag(
                 "Could not find public_key_id {:?} in the private_keys map, which only knows about the latest key_id {:?} and the historical key_ids {:?}",
                 public_key_id,
                 private_keys.latest.id,
-                private_keys.historical.iter().map(|pkid| pkid.id).collect::<Vec<_>>(),
-                );
+                private_keys
+                    .historical
+                    .iter()
+                    .map(|pkid| pkid.id)
+                    .collect::<Vec<_>>(),
+            );
             None
         }
     }?;
@@ -454,7 +458,9 @@ pub async fn handle_omaha_request(
         let builder = Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header(header::CONTENT_LENGTH, 0);
-        log::error!("Received a request before |responses_by_appid| was set; returning an empty response with status 500.");
+        log::error!(
+            "Received a request before |responses_by_appid| was set; returning an empty response with status 500."
+        );
         return Ok(builder.body(Body::empty()).unwrap());
     }
 
@@ -487,7 +493,7 @@ pub async fn handle_omaha_request(
                 assert_eq!(version, expected_version);
             }
 
-            let app = if let Some(expected_update_check) = app.get("updatecheck") {
+            if let Some(expected_update_check) = app.get("updatecheck") {
                 let updatedisabled = expected_update_check
                     .get("updatedisabled")
                     .map(|v| v.as_bool().unwrap())
@@ -638,8 +644,7 @@ pub async fn handle_omaha_request(
                     "status": "ok",
                     "cohortname": "integration-test",
                 })
-            };
-            app
+            }
         })
         .collect();
     let response = json!({
@@ -692,9 +697,9 @@ mod tests {
     use anyhow::Context;
     #[cfg(fasync)]
     use fuchsia_async as fasync;
+    use hyper::Client;
     #[cfg(feature = "tokio")]
     use hyper::client::HttpConnector;
-    use hyper::Client;
 
     #[cfg(fasync)]
     async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector> {

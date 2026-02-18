@@ -13,6 +13,7 @@ use crate::{
     common::{App, UserCounting},
     configuration::Config,
     cup_ecdsa::{CupDecorationError, CupRequest, Cupv2RequestHandler, RequestMetadata},
+    http_request::Body,
     protocol::{
         PROTOCOL_V3,
         request::{
@@ -253,7 +254,7 @@ impl<'a> RequestBuilder<'a> {
     pub fn build(
         &self,
         cup_handler: Option<&impl Cupv2RequestHandler>,
-    ) -> Result<(http::Request<hyper::Body>, Option<RequestMetadata>)> {
+    ) -> Result<(http::Request<Body>, Option<RequestMetadata>)> {
         let (intermediate, request_metadata) = self.build_intermediate(cup_handler)?;
         if self
             .app_entries
@@ -263,7 +264,7 @@ impl<'a> RequestBuilder<'a> {
             info!("Building Request: {}", intermediate);
         }
         Ok((
-            Into::<Result<http::Request<hyper::Body>>>::into(intermediate)?,
+            Into::<Result<http::Request<Body>>>::into(intermediate)?,
             request_metadata,
         ))
     }
@@ -370,9 +371,9 @@ impl Display for Intermediate {
     }
 }
 
-impl From<Intermediate> for Result<http::Request<hyper::Body>> {
+impl From<Intermediate> for Result<http::Request<Body>> {
     fn from(intermediate: Intermediate) -> Self {
-        let mut builder = hyper::Request::post(&intermediate.uri);
+        let mut builder = http::Request::post(&intermediate.uri);
         for (key, value) in &intermediate.headers {
             builder = builder.header(*key, value);
         }

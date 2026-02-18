@@ -7,12 +7,18 @@
 // those terms.
 
 use {
+    bytes::Bytes,
     futures::future::BoxFuture,
     futures::prelude::*,
-    hyper::{Body, Request, Response},
+    http::{Request, Response},
+    http_body_util::Full,
 };
 
 pub mod mock;
+
+/// A wrapper around Hyper's Body type, to provide a simple request->response style of API for
+/// the state machine to use.
+pub type Body = Full<Bytes>;
 
 /// A trait for providing HTTP capabilities to the StateMachine.
 ///
@@ -35,7 +41,7 @@ pub trait HttpRequest {
 pub struct Error {
     kind: ErrorKind,
     #[source]
-    source: Option<hyper::Error>,
+    source: Option<hyper_util::client::legacy::Error>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -72,16 +78,13 @@ impl Error {
     }
 }
 
-impl From<hyper::Error> for Error {
-    fn from(error: hyper::Error) -> Self {
-        let kind = if error.is_user() {
-            ErrorKind::User
-        } else {
-            ErrorKind::Transport
-        };
+impl From<hyper_util::client::legacy::Error> for Error {
+    fn from(error: hyper_util::client::legacy::Error) -> Self {
+        // hyper_util::client::legacy::Error doesn't implement is_user() or is_timeout()
+        let kind = ErrorKind::Transport;
         Error {
             kind,
-            source: error.into(),
+            source: Some(error),
         }
     }
 }
@@ -109,6 +112,6 @@ pub struct StubHttpRequest;
 
 impl HttpRequest for StubHttpRequest {
     fn request(&mut self, _req: Request<Body>) -> BoxFuture<'_, Result<Response<Vec<u8>>, Error>> {
-        future::ok(Response::default()).boxed()
+        future::ok(Response::builder().body(vec![]).unwrap()).boxed()
     }
 }

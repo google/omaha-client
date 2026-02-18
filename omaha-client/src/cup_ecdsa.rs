@@ -7,8 +7,8 @@
 // those terms.
 
 use crate::http_uri_ext::HttpUriExt as _;
+use http::header::ToStrError;
 use http::{Response, Uri};
-use hyper::header::ETAG;
 use p256::ecdsa::{DerSignature, signature::Verifier as _};
 use rand::{Rng, thread_rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -33,7 +33,7 @@ pub enum CupVerificationError {
     #[error("etag header missing.")]
     EtagHeaderMissing,
     #[error("etag header is not a string.")]
-    EtagNotString(hyper::header::ToStrError),
+    EtagNotString(ToStrError),
     #[error("etag header is malformed.")]
     EtagMalformed,
     #[error("etag header's request hash is malformed.")]
@@ -264,7 +264,7 @@ impl Cupv2RequestHandler for StandardCupv2Handler {
 
         let etag_header = resp
             .headers()
-            .get(ETAG)
+            .get(http::header::ETAG)
             .ok_or(CupVerificationError::EtagHeaderMissing)?
             .to_str()
             .map_err(CupVerificationError::EtagNotString)
@@ -631,8 +631,8 @@ mod tests {
             test_support::make_standard_intermediate_for_test(Request::default());
         let request_metadata = cup_handler.decorate_request(&mut intermediate)?;
 
-        // No .header(ETAG, <val>), which is a problem.
-        let response: Response<Vec<u8>> = hyper::Response::builder()
+        // No .header(http::header::ETAG, <val>), which is a problem.
+        let response: Response<Vec<u8>> = http::Response::builder()
             .status(200)
             .body("foo".as_bytes().to_vec())?;
 
@@ -654,9 +654,9 @@ mod tests {
             test_support::make_standard_intermediate_for_test(Request::default());
         let request_metadata = cup_handler.decorate_request(&mut intermediate)?;
 
-        let response: Response<Vec<u8>> = hyper::Response::builder()
+        let response: Response<Vec<u8>> = http::Response::builder()
             .status(200)
-            .header(ETAG, "\u{FEFF}")
+            .header(http::header::ETAG, "\u{FEFF}")
             .body("foo".as_bytes().to_vec())?;
 
         assert_matches!(
@@ -740,9 +740,9 @@ mod tests {
                 None,
             ),
         ] {
-            let response: Response<Vec<u8>> = hyper::Response::builder()
+            let response: Response<Vec<u8>> = http::Response::builder()
                 .status(200)
-                .header(ETAG, etag)
+                .header(http::header::ETAG, etag)
                 .body(response_body.as_bytes().to_vec())?;
             let actual_err = cup_handler
                 .verify_response(&request_metadata, &response, public_key_id)
@@ -780,9 +780,9 @@ mod tests {
             hex::encode(Sha256::digest(&request_metadata.request_body))
         );
 
-        let response: Response<Vec<u8>> = hyper::Response::builder()
+        let response: Response<Vec<u8>> = http::Response::builder()
             .status(200)
-            .header(ETAG, etag)
+            .header(http::header::ETAG, etag)
             .body(response_body.as_bytes().to_vec())?;
         Ok((request_metadata, response))
     }

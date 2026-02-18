@@ -20,6 +20,8 @@ use pretty_assertions::assert_eq;
 use serde_json::json;
 use url::Url;
 
+use http_body_util::BodyExt;
+
 /// Test that a simple request's fields are all correct:
 ///
 /// - All request fields are set properly from the Config
@@ -304,7 +306,7 @@ fn test_single_request() {
     // Extract the request body out into a concatenated stream of Chunks, into a slice, so
     // that serde can be used to parse the body into a JSON Value object that can be compared
     // with the expected json constructed above.
-    let body = block_on(hyper::body::to_bytes(body)).unwrap();
+    let body = block_on(body.collect()).unwrap().to_bytes();
     let actual: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(expected, actual);

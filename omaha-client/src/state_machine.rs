@@ -40,7 +40,6 @@ use p256::ecdsa::DerSignature;
 use std::{
     cmp::min,
     collections::HashMap,
-    convert::TryInto,
     rc::Rc,
     str::Utf8Error,
     time::{Duration, Instant, SystemTime},
@@ -1414,7 +1413,7 @@ where
     /// handle them as part of parsing the response body.
     async fn make_request(
         http_client: &mut HR,
-        request: http::Request<hyper::Body>,
+        request: http::Request<crate::http_request::Body>,
     ) -> Result<HttpResponse<Vec<u8>>, http_request::Error> {
         info!("Making http request to: {}", request.uri());
         http_client.request(request).await.map_err(|err| {
@@ -1601,6 +1600,7 @@ mod tests {
     use futures::executor::{LocalPool, block_on};
     use futures::future::LocalBoxFuture;
     use futures::task::LocalSpawnExt;
+    use http_body_util::BodyExt as _;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use std::cell::RefCell;
@@ -1653,7 +1653,7 @@ mod tests {
     async fn assert_request<'a>(http: &MockHttpRequest, request_builder: RequestBuilder<'a>) {
         let cup_handler = make_cup_handler_for_test();
         let (request, _request_metadata) = request_builder.build(Some(&cup_handler)).unwrap();
-        let body = hyper::body::to_bytes(request).await.unwrap();
+        let body = request.into_body().collect().await.unwrap().to_bytes();
         // Compare string instead of Vec<u8> for easier debugging.
         let body_str = String::from_utf8_lossy(&body);
         http.assert_body_str(&body_str).await;

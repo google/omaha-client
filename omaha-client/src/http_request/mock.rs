@@ -7,10 +7,11 @@
 // those terms.
 
 use crate::http_request::{Error, HttpRequest};
+use bytes::Bytes;
 use futures::future::BoxFuture;
 use futures::prelude::*;
-use http::StatusCode;
-use hyper::{Body, Request, Response};
+use http::{Request, Response, StatusCode};
+use http_body_util::{BodyExt, Full};
 use pretty_assertions::assert_eq;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
@@ -20,13 +21,16 @@ use futures::executor::block_on;
 #[derive(Debug, Default)]
 pub struct MockHttpRequest {
     // The requests made using this mock.
-    requests: Rc<RefCell<Vec<Request<Body>>>>,
+    requests: Rc<RefCell<Vec<Request<Full<Bytes>>>>>,
     // The queue of fake responses for the upcoming requests.
     responses: VecDeque<Result<Response<Vec<u8>>, Error>>,
 }
 
 impl HttpRequest for MockHttpRequest {
-    fn request(&mut self, req: Request<Body>) -> BoxFuture<'_, Result<Response<Vec<u8>>, Error>> {
+    fn request(
+        &mut self,
+        req: Request<Full<Bytes>>,
+    ) -> BoxFuture<'_, Result<Response<Vec<u8>>, Error>> {
         self.requests.borrow_mut().push(req);
 
         future::ready(if let Some(resp) = self.responses.pop_front() {
@@ -54,14 +58,14 @@ impl MockHttpRequest {
         Default::default()
     }
 
-    pub fn from_request_cell(request: Rc<RefCell<Vec<Request<Body>>>>) -> Self {
+    pub fn from_request_cell(request: Rc<RefCell<Vec<Request<Full<Bytes>>>>>) -> Self {
         Self {
             requests: request,
             ..Default::default()
         }
     }
 
-    pub fn get_request_cell(&self) -> Rc<RefCell<Vec<Request<Body>>>> {
+    pub fn get_request_cell(&self) -> Rc<RefCell<Vec<Request<Full<Bytes>>>>> {
         Rc::clone(&self.requests)
     }
 
@@ -73,13 +77,13 @@ impl MockHttpRequest {
         self.responses.push_back(Err(error));
     }
 
-    pub fn assert_method(&self, method: &hyper::Method) {
+    pub fn assert_method(&self, method: &http::Method) {
         assert_eq!(method, self.requests.borrow().last().unwrap().method());
     }
 
     pub fn assert_uri(&self, uri: &str) {
         assert_eq!(
-            &uri.parse::<hyper::Uri>().unwrap(),
+            &uri.parse::<http::Uri>().unwrap(),
             self.requests.borrow().last().unwrap().uri()
         );
     }
@@ -92,17 +96,29 @@ impl MockHttpRequest {
         assert_eq!(headers[key], value);
     }
 
-    fn take_request(&self) -> Request<Body> {
+    fn take_request(&self) -> Request<Full<Bytes>> {
         self.requests.borrow_mut().pop().unwrap()
     }
 
     pub async fn assert_body(&self, body: &[u8]) {
-        let bytes = hyper::body::to_bytes(self.take_request()).await.unwrap();
+        let bytes = self
+            .take_request()
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes();
         assert_eq!(body, &bytes);
     }
 
     pub async fn assert_body_str(&self, body: &str) {
-        let bytes = hyper::body::to_bytes(self.take_request()).await.unwrap();
+        let bytes = self
+            .take_request()
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes();
         assert_eq!(body, String::from_utf8_lossy(&bytes));
     }
 }
@@ -122,7 +138,7 @@ fn test_mock() {
         let response = mock.request(req).await.unwrap();
         assert_eq!(res_body, response.into_body());
 
-        mock.assert_method(&hyper::Method::GET);
+        mock.assert_method(&http::Method::GET);
         mock.assert_uri(uri);
         mock.assert_header("X-Custom-Foo", "Bar");
         mock.assert_body(req_body.as_slice()).await;
@@ -138,7 +154,7 @@ fn test_missing_response() {
         assert_eq!(res_body, response.into_body());
 
         let response2 = mock.request(Request::default()).await.unwrap();
-        assert_eq!(response2.status(), hyper::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response2.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     });
 }
 

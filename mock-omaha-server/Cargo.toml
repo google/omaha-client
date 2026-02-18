@@ -8,7 +8,7 @@
 
 [package]
 name = "mock-omaha-server"
-version = "0.3.8"
+version = "0.4.0"
 edition = "2024"
 description = "Mock implementation of the server end of the Omaha Protocol"
 license = "BSD-2-Clause OR Apache-2.0 OR MIT"
@@ -19,7 +19,7 @@ exclude = [".*"]
 
 [features]
 default = ["tokio"]
-tokio = ["dep:tokio", "hyper/tcp"]
+tokio = ["dep:tokio"]
 
 [dependencies]
 anyhow = "1.0"
@@ -27,9 +27,12 @@ argh = "0.1"
 derive_builder = "0.20"
 futures = "0.3"
 hex = "0.4"
-hyper = { version = "0.14.19", default-features = false, features = ["http1", "server", "stream"] }
+http = "1"
+http-body-util = "0.1"
+hyper = { version = "1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "server-auto"] }
 log = "0.4"
-omaha_client = { version = "0.3", path = "../omaha-client" }
+omaha_client = { version = "0.4", path = "../omaha-client" }
 p256 = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

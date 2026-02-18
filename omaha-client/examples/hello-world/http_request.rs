@@ -7,12 +7,10 @@
 // those terms.
 use {
     futures::{FutureExt as _, future::BoxFuture},
-    hyper::{
-        Client, Request, Response,
-        body::Body,
-        client::{HttpConnector, ResponseFuture},
-    },
-    omaha_client::http_request::{Error, HttpRequest},
+    http::{Request, Response},
+    http_body_util::BodyExt as _,
+    hyper_util::client::legacy::{Client, ResponseFuture, connect::HttpConnector},
+    omaha_client::http_request::{Body, Error, HttpRequest},
     std::time::Duration,
 };
 
@@ -47,7 +45,11 @@ async fn collect_from_future_on_timeout(
 async fn collect_from_future(response_future: ResponseFuture) -> Result<Response<Vec<u8>>, Error> {
     let response = response_future.await.map_err(Error::from)?;
     let (parts, body) = response.into_parts();
-    let bytes = hyper::body::to_bytes(body).await?;
+    let bytes = body
+        .collect()
+        .await
+        .map_err(|_| Error::new_timeout())?
+        .to_bytes();
     Ok(Response::from_parts(parts, bytes.to_vec()))
 }
 
@@ -65,7 +67,7 @@ impl MinimalHttpRequest {
             .https_or_http()
             .enable_all_versions()
             .build();
-        let client = Client::builder().build(https);
+        let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build(https);
         MinimalHttpRequest { timeout, client }
     }
 }

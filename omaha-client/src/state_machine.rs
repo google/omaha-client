@@ -1414,7 +1414,7 @@ where
     /// handle them as part of parsing the response body.
     async fn make_request(
         http_client: &mut HR,
-        request: http::Request<hyper::Body>,
+        request: http::Request<http_request::Body>,
     ) -> Result<HttpResponse<Vec<u8>>, http_request::Error> {
         info!("Making http request to: {}", request.uri());
         http_client.request(request).await.map_err(|err| {
@@ -1653,7 +1653,7 @@ mod tests {
     async fn assert_request<'a>(http: &MockHttpRequest, request_builder: RequestBuilder<'a>) {
         let cup_handler = make_cup_handler_for_test();
         let (request, _request_metadata) = request_builder.build(Some(&cup_handler)).unwrap();
-        let body = hyper::body::to_bytes(request).await.unwrap();
+        let body = http_request::to_bytes(request).await.unwrap();
         // Compare string instead of Vec<u8> for easier debugging.
         let body_str = String::from_utf8_lossy(&body);
         http.assert_body_str(&body_str).await;
@@ -2780,8 +2780,10 @@ mod tests {
             let mut http = MockHttpRequest::empty();
             http.add_error(http_request::mock_errors::make_transport_error());
             let mut storage = MemStorage::new();
-            let _ = storage.set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000);
-            let _ = storage.commit();
+            let _ = storage
+                .set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000)
+                .await;
+            let _ = storage.commit().await;
             let storage = Rc::new(Mutex::new(storage));
 
             let mut state_machine = StateMachineBuilder::new_stub()
@@ -3317,8 +3319,8 @@ mod tests {
             // Start out with a value in storage...
             {
                 let mut storage = storage.lock().await;
-                let _ = storage.set_int(CONSECUTIVE_FAILED_UPDATE_CHECKS, 1);
-                let _ = storage.commit();
+                let _ = storage.set_int(CONSECUTIVE_FAILED_UPDATE_CHECKS, 1).await;
+                let _ = storage.commit().await;
             }
 
             let mut state_machine = StateMachineBuilder::new_stub()

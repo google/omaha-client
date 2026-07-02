@@ -6,11 +6,66 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
-use {
-    futures::future::BoxFuture,
-    futures::prelude::*,
-    hyper::{Body, Request, Response},
-};
+use {futures::future::BoxFuture, futures::prelude::*};
+
+pub use http::{Request, Response};
+pub type Body = http_body_util::Full<bytes::Bytes>;
+
+pub fn empty_body() -> Body {
+    Body::default()
+}
+
+pub fn body_from<T: Into<bytes::Bytes>>(data: T) -> Body {
+    Body::new(data.into())
+}
+
+pub trait IntoBody {
+    type Body: http_body::Body;
+    fn into_body(self) -> Self::Body;
+}
+
+impl<B: http_body::Body> IntoBody for http::Request<B> {
+    type Body = B;
+    fn into_body(self) -> B {
+        self.into_body()
+    }
+}
+
+impl<B: http_body::Body> IntoBody for http::Response<B> {
+    type Body = B;
+    fn into_body(self) -> B {
+        self.into_body()
+    }
+}
+
+impl<D: bytes::Buf> IntoBody for http_body_util::Full<D> {
+    type Body = Self;
+    fn into_body(self) -> Self {
+        self
+    }
+}
+
+impl<D: bytes::Buf> IntoBody for http_body_util::Empty<D> {
+    type Body = Self;
+    fn into_body(self) -> Self {
+        self
+    }
+}
+
+impl IntoBody for hyper::body::Incoming {
+    type Body = Self;
+    fn into_body(self) -> Self {
+        self
+    }
+}
+
+pub async fn to_bytes<I>(item: I) -> Result<bytes::Bytes, <I::Body as http_body::Body>::Error>
+where
+    I: IntoBody,
+{
+    use http_body_util::BodyExt as _;
+    item.into_body().collect().await.map(|buf| buf.to_bytes())
+}
 
 pub mod mock;
 
@@ -35,7 +90,7 @@ pub trait HttpRequest {
 pub struct Error {
     kind: ErrorKind,
     #[source]
-    source: Option<hyper::Error>,
+    source: Option<Box<dyn std::error::Error + Send + Sync>>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -63,12 +118,20 @@ impl Error {
         self.kind == ErrorKind::User
     }
 
-    /// Returns true if this error is the result of a timeout when trying to full-fill the request
+    /// Returns true if this error is the result of a timeout when trying to fulfill the request.
     ///
-    /// Note: Connect timeouts may be returned as io errors,  not timeouts, depending on where in
-    /// the network / http client stack the timeout occurs in.
+    /// Note: Connect timeouts may be returned as transport or I/O errors, not timeouts, depending
+    /// on where in the network / HTTP client stack the timeout occurs.
     pub fn is_timeout(&self) -> bool {
         self.kind == ErrorKind::Timeout
+    }
+
+    /// Create a transport error wrapping an underlying source error.
+    pub fn new_transport(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        Self {
+            kind: ErrorKind::Transport,
+            source: Some(error.into()),
+        }
     }
 }
 
@@ -81,7 +144,16 @@ impl From<hyper::Error> for Error {
         };
         Error {
             kind,
-            source: error.into(),
+            source: Some(Box::new(error)),
+        }
+    }
+}
+
+impl From<hyper_util::client::legacy::Error> for Error {
+    fn from(error: hyper_util::client::legacy::Error) -> Self {
+        Error {
+            kind: ErrorKind::Transport,
+            source: Some(Box::new(error)),
         }
     }
 }

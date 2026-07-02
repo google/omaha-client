@@ -278,7 +278,7 @@ impl fmt::Display for CheckTiming {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.minimum_wait {
             None => fmt::Display::fmt(&self.time, f),
-            Some(wait) => write!(f, "{} wait: {:?}", &self.time, &wait),
+            Some(wait) => write!(f, "{} wait: {:?}", self.time, wait),
         }
     }
 }

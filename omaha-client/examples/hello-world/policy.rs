@@ -91,8 +91,8 @@ pub struct MinimalPolicyEngine<T> {
 impl<T> MinimalPolicyEngine<T> {
     pub fn new(time_source: T, metrics: MinimalMetricsReporter) -> Self {
         Self {
-            time_source: time_source,
-            metrics: metrics,
+            time_source,
+            metrics,
         }
     }
 }

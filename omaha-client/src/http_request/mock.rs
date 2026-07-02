@@ -6,11 +6,10 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
-use crate::http_request::{Error, HttpRequest};
+use crate::http_request::{Body, Error, HttpRequest, Request, Response, to_bytes};
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use http::StatusCode;
-use hyper::{Body, Request, Response};
 use pretty_assertions::assert_eq;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
@@ -97,12 +96,12 @@ impl MockHttpRequest {
     }
 
     pub async fn assert_body(&self, body: &[u8]) {
-        let bytes = hyper::body::to_bytes(self.take_request()).await.unwrap();
+        let bytes = to_bytes(self.take_request()).await.unwrap();
         assert_eq!(body, &bytes);
     }
 
     pub async fn assert_body_str(&self, body: &str) {
-        let bytes = hyper::body::to_bytes(self.take_request()).await.unwrap();
+        let bytes = to_bytes(self.take_request()).await.unwrap();
         assert_eq!(body, String::from_utf8_lossy(&bytes));
     }
 }

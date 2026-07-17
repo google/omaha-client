@@ -149,15 +149,6 @@ impl From<hyper::Error> for Error {
     }
 }
 
-impl From<hyper_util::client::legacy::Error> for Error {
-    fn from(error: hyper_util::client::legacy::Error) -> Self {
-        Error {
-            kind: ErrorKind::Transport,
-            source: Some(Box::new(error)),
-        }
-    }
-}
-
 pub mod mock_errors {
     use super::*;
 

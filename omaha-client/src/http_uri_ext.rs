@@ -31,7 +31,10 @@ impl HttpUriExt for Uri {
         }
         let mut base_parts = self.into_parts();
         let (base_path, query) = match &base_parts.path_and_query {
-            Some(path_and_query) => (path_and_query.path(), path_and_query.query()),
+            Some(path_and_query) if !path_and_query.path().is_empty() => {
+                (path_and_query.path(), path_and_query.query())
+            }
+            Some(path_and_query) => ("/", path_and_query.query()),
             None => ("/", None),
         };
         let new_path_and_query = if base_path.ends_with('/') {
@@ -53,13 +56,18 @@ impl HttpUriExt for Uri {
         let mut base_parts = self.into_parts();
         let new_path_and_query = match &base_parts.path_and_query {
             Some(path_and_query) => {
-                if let Some(query) = path_and_query.query() {
-                    format!("{}?{query}&{key}={value}", path_and_query.path())
+                let path = if path_and_query.path().is_empty() {
+                    "/"
                 } else {
-                    format!("{}?{key}={value}", path_and_query.path())
+                    path_and_query.path()
+                };
+                if let Some(query) = path_and_query.query() {
+                    format!("{path}?{query}&{key}={value}")
+                } else {
+                    format!("{path}?{key}={value}")
                 }
             }
-            None => format!("?{key}={value}"),
+            None => format!("/?{key}={value}"),
         };
         base_parts.path_and_query = Some(new_path_and_query.parse()?);
         Ok(Uri::from_parts(base_parts)?)
@@ -80,7 +88,12 @@ mod tests {
 
     fn make_uri_from_path_and_query(path_and_query: Option<&str>) -> Uri {
         let mut parts = uri::Parts::default();
-        parts.path_and_query = path_and_query.map(|p| p.parse().unwrap());
+        let pq = match path_and_query {
+            None | Some("") => None,
+            Some(p) if p.starts_with('?') => Some(format!("/{p}").parse().unwrap()),
+            Some(p) => Some(p.parse().unwrap()),
+        };
+        parts.path_and_query = pq;
         Uri::from_parts(parts).unwrap()
     }
 

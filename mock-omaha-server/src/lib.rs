@@ -8,34 +8,25 @@
 
 use anyhow::Error;
 use derive_builder::Builder;
-use futures::prelude::*;
-use hyper::body::Bytes;
-use hyper::server::Server;
-use hyper::server::accept::from_stream;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Method, Request, Response, StatusCode, header};
+use hyper::service::service_fn;
+use hyper::{Method, Request, Response, StatusCode, header};
 use omaha_client::cup_ecdsa::PublicKeyId;
 use omaha_client::cup_ecdsa::test_support::{
     make_default_private_key_for_test, make_default_public_key_id_for_test,
 };
+use omaha_client::http_request::{Body, empty_body, to_bytes};
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 #[cfg(not(target_os = "fuchsia"))]
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use url::Url;
 
 #[cfg(not(target_os = "fuchsia"))]
-use {
-    std::io,
-    std::pin::Pin,
-    std::task::{Context, Poll},
-    tokio::task::JoinHandle,
-};
+use tokio::task::JoinHandle;
 
 #[cfg(all(not(fasync), not(target_os = "fuchsia")))]
 use tokio::sync::Mutex;
@@ -44,7 +35,7 @@ use tokio::sync::Mutex;
 use {fuchsia_async as fasync, fuchsia_async::Task, fuchsia_sync::Mutex};
 
 #[cfg(all(fasync, target_os = "fuchsia"))]
-use fuchsia_async::net::TcpListener;
+use {fuchsia_async::net::TcpListener, futures::stream::StreamExt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum OmahaResponse {
@@ -129,67 +120,6 @@ pub enum UpdateCheckAssertion {
     UpdatesDisabled,
 }
 
-/// Adapt [tokio::net::TcpStream] to work with hyper.
-#[cfg(not(target_os = "fuchsia"))]
-#[derive(Debug)]
-pub enum ConnectionStream {
-    Tcp(TcpStream),
-}
-
-#[cfg(not(target_os = "fuchsia"))]
-impl tokio::io::AsyncRead for ConnectionStream {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
-        match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_read(cx, buf),
-        }
-    }
-}
-
-#[cfg(not(target_os = "fuchsia"))]
-impl tokio::io::AsyncWrite for ConnectionStream {
-    fn poll_write(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_write(cx, buf),
-        }
-    }
-
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_flush(cx),
-        }
-    }
-
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        match &mut *self {
-            ConnectionStream::Tcp(t) => Pin::new(t).poll_shutdown(cx),
-        }
-    }
-}
-
-#[cfg(not(target_os = "fuchsia"))]
-struct TcpListenerStream(TcpListener);
-
-#[cfg(not(target_os = "fuchsia"))]
-impl Stream for TcpListenerStream {
-    type Item = Result<TcpStream, std::io::Error>;
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        let listener = &mut this.0;
-        match listener.poll_accept(cx) {
-            Poll::Ready(value) => Poll::Ready(Some(value.map(|(stream, _)| stream))),
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Builder)]
 #[builder(pattern = "owned")]
 #[builder(derive(Debug))]
@@ -244,31 +174,27 @@ impl OmahaServer {
             SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
         };
 
-        let (connections, addr) = {
-            let listener = TcpListener::bind(&addr)?;
-            let local_addr = listener.local_addr()?;
-            (
-                listener
-                    .accept_stream()
-                    .map_ok(|(conn, _addr)| fuchsia_hyper::TcpStream { stream: conn }),
-                local_addr,
-            )
-        };
+        let listener = fasync::net::TcpListener::bind(&addr).expect("cannot bind to address");
 
-        let make_svc = make_service_fn(move |_socket| {
-            let arc_server = Arc::clone(&arc_server);
-            async move {
-                Ok::<_, Infallible>(service_fn(move |req| {
+        let addr = listener.local_addr()?;
+
+        let server = async move {
+            let mut stream = listener.accept_stream();
+            while let Some(Ok((conn, _addr))) = stream.next().await {
+                let arc_server = Arc::clone(&arc_server);
+                let service = service_fn(move |req| {
                     let arc_server = Arc::clone(&arc_server);
                     async move { handle_request(req, &arc_server).await }
-                }))
+                });
+                let io = fuchsia_hyper::TokioIo::new(fuchsia_hyper::TcpStream { stream: conn });
+                fasync::Task::spawn(async move {
+                    let _ = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(io, service)
+                        .await;
+                })
+                .detach();
             }
-        });
-
-        let server = Server::builder(from_stream(connections))
-            .executor(fuchsia_hyper::Executor)
-            .serve(make_svc)
-            .unwrap_or_else(|e| panic!("error serving omaha server: {e}"));
+        };
 
         let server_task = fasync::Task::spawn(server);
         Ok((format!("http://{addr}/"), Some(server_task)))
@@ -276,7 +202,7 @@ impl OmahaServer {
 
     /// Spawn the server on the current executor, returning the address of the server and
     /// its Task.
-    #[cfg(all(fasync, not(target_os = "fuchsia")))]
+    #[cfg(fasync)]
     pub async fn start(
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
@@ -287,16 +213,6 @@ impl OmahaServer {
             SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
         };
 
-        let make_svc = make_service_fn(move |_socket| {
-            let arc_server = Arc::clone(&arc_server);
-            async {
-                Ok::<_, Infallible>(service_fn(move |req| {
-                    let arc_server = Arc::clone(&arc_server);
-                    async move { handle_request(req, &arc_server).await }
-                }))
-            }
-        });
-
         let listener = TcpListener::bind(&addr)
             .await
             .expect("cannot bind to address");
@@ -304,13 +220,20 @@ impl OmahaServer {
         let addr = listener.local_addr()?;
 
         let server = async move {
-            Server::builder(from_stream(
-                TcpListenerStream(listener).map_ok(ConnectionStream::Tcp),
-            ))
-            .executor(fuchsia_hyper::Executor)
-            .serve(make_svc)
-            .await
-            .unwrap_or_else(|e| panic!("error serving omaha server: {e}"));
+            while let Ok((stream, _addr)) = listener.accept().await {
+                let arc_server = Arc::clone(&arc_server);
+                let service = service_fn(move |req| {
+                    let arc_server = Arc::clone(&arc_server);
+                    async move { handle_request(req, &arc_server).await }
+                });
+                let io = hyper_util::rt::TokioIo::new(stream);
+                fasync::Task::spawn(async move {
+                    let _ = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(io, service)
+                        .await;
+                })
+                .detach();
+            }
         };
 
         let server_task = fasync::Task::spawn(server);
@@ -319,7 +242,7 @@ impl OmahaServer {
 
     /// Spawn the server on the current executor, returning the address of the server and
     /// its JoinHandle.
-    #[cfg(feature = "tokio")]
+    #[cfg(all(feature = "tokio", not(fasync)))]
     pub async fn start(
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
@@ -330,16 +253,6 @@ impl OmahaServer {
             SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
         };
 
-        let make_svc = make_service_fn(move |_socket| {
-            let arc_server = Arc::clone(&arc_server);
-            async {
-                Ok::<_, Infallible>(service_fn(move |req| {
-                    let arc_server = Arc::clone(&arc_server);
-                    async move { handle_request(req, &arc_server).await }
-                }))
-            }
-        });
-
         let listener = TcpListener::bind(&addr)
             .await
             .expect("cannot bind to address");
@@ -347,17 +260,26 @@ impl OmahaServer {
         let addr = listener.local_addr()?;
 
         let server_task = tokio::spawn(async move {
-            let connections = TcpListenerStream(listener).map_ok(ConnectionStream::Tcp);
-            let _ = Server::builder(from_stream(connections))
-                .serve(make_svc)
-                .await;
+            while let Ok((stream, _addr)) = listener.accept().await {
+                let arc_server = Arc::clone(&arc_server);
+                let service = service_fn(move |req| {
+                    let arc_server = Arc::clone(&arc_server);
+                    async move { handle_request(req, &arc_server).await }
+                });
+                let io = hyper_util::rt::TokioIo::new(stream);
+                tokio::spawn(async move {
+                    let _ = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(io, service)
+                        .await;
+                });
+            }
         });
         Ok((format!("http://{addr}/"), Some(server_task)))
     }
 }
 
 fn make_etag(
-    request_body: &Bytes,
+    request_body: &[u8],
     uri: &str,
     private_keys: &PrivateKeys,
     response_data: &[u8],
@@ -402,17 +324,22 @@ fn make_etag(
     hasher.update(&*cup2key_val);
     let transaction_hash = hasher.finalize();
 
+    let sig: p256::ecdsa::Signature = private_key.sign(&transaction_hash);
     Some(format!(
         "{}:{}",
-        hex::encode(private_key.sign(&transaction_hash).to_der()),
+        hex::encode(sig.to_der()),
         hex::encode(request_hash)
     ))
 }
 
-pub async fn handle_request(
-    req: Request<Body>,
+pub async fn handle_request<B>(
+    req: Request<B>,
     omaha_server: &Mutex<OmahaServer>,
-) -> Result<Response<Body>, Error> {
+) -> Result<Response<Body>, Error>
+where
+    B: http_body::Body + std::fmt::Debug + 'static,
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     log::debug!("{req:#?}");
     if req.uri().path() == "/set_responses_by_appid" {
         return handle_set_responses(req, omaha_server).await;
@@ -421,17 +348,23 @@ pub async fn handle_request(
     handle_omaha_request(req, omaha_server).await
 }
 
-pub async fn handle_set_responses(
-    req: Request<Body>,
+pub async fn handle_set_responses<B>(
+    req: Request<B>,
     omaha_server: &Mutex<OmahaServer>,
-) -> Result<Response<Body>, Error> {
+) -> Result<Response<Body>, Error>
+where
+    B: http_body::Body + 'static,
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     assert_eq!(req.method(), Method::POST);
 
-    let req_body = hyper::body::to_bytes(req).await?;
+    let req_body = to_bytes(req)
+        .await
+        .map_err(|_| anyhow::anyhow!("failed to read body"))?;
     let req_json: HashMap<String, ResponseAndMetadata> =
         serde_json::from_slice(&req_body).expect("parse json");
     {
-        #[cfg(feature = "tokio")]
+        #[cfg(all(feature = "tokio", not(fasync)))]
         let mut omaha_server = omaha_server.lock().await;
         #[cfg(fasync)]
         let mut omaha_server = omaha_server.lock();
@@ -441,14 +374,18 @@ pub async fn handle_set_responses(
     let builder = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_LENGTH, 0);
-    Ok(builder.body(Body::empty()).unwrap())
+    Ok(builder.body(empty_body()).unwrap())
 }
 
-pub async fn handle_omaha_request(
-    req: Request<Body>,
+pub async fn handle_omaha_request<B>(
+    req: Request<B>,
     omaha_server: &Mutex<OmahaServer>,
-) -> Result<Response<Body>, Error> {
-    #[cfg(feature = "tokio")]
+) -> Result<Response<Body>, Error>
+where
+    B: http_body::Body + 'static,
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
+    #[cfg(all(feature = "tokio", not(fasync)))]
     let omaha_server = omaha_server.lock().await.clone();
     #[cfg(fasync)]
     let omaha_server = omaha_server.lock().clone();
@@ -461,12 +398,14 @@ pub async fn handle_omaha_request(
         log::error!(
             "Received a request before |responses_by_appid| was set; returning an empty response with status 500."
         );
-        return Ok(builder.body(Body::empty()).unwrap());
+        return Ok(builder.body(empty_body()).unwrap());
     }
 
     let uri_string = req.uri().to_string();
 
-    let req_body = hyper::body::to_bytes(req).await?;
+    let req_body = to_bytes(req)
+        .await
+        .map_err(|_| anyhow::anyhow!("failed to read body"))?;
     let req_json: serde_json::Value = serde_json::from_slice(&req_body).expect("parse json");
 
     let request = req_json.get("request").unwrap();
@@ -697,18 +636,19 @@ mod tests {
     use anyhow::Context;
     #[cfg(fasync)]
     use fuchsia_async as fasync;
-    use hyper::Client;
+    #[cfg(fasync)]
+    use fuchsia_hyper::client::Client;
     #[cfg(feature = "tokio")]
-    use hyper::client::HttpConnector;
+    use hyper_util::client::legacy::{Client, connect::HttpConnector};
 
     #[cfg(fasync)]
-    async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector> {
+    async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector, Body> {
         fuchsia_hyper::new_client()
     }
 
     #[cfg(feature = "tokio")]
-    async fn new_http_client() -> Client<HttpConnector> {
-        Client::new()
+    async fn new_http_client() -> Client<HttpConnector, Body> {
+        Client::builder(hyper_util::rt::TokioExecutor::new()).build_http()
     }
 
     #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
@@ -754,9 +694,7 @@ mod tests {
         let response = client.request(request).await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let body = hyper::body::to_bytes(response)
-            .await
-            .context("reading response body")?;
+        let body = to_bytes(response).await.context("reading response body")?;
         let obj: serde_json::Value =
             serde_json::from_slice(&body).context("parsing response json")?;
 
@@ -825,9 +763,7 @@ mod tests {
             let response = client.request(request).await?;
 
             assert_eq!(response.status(), StatusCode::OK);
-            let body = hyper::body::to_bytes(response)
-                .await
-                .context("reading response body")?;
+            let body = to_bytes(response).await.context("reading response body")?;
             let obj: serde_json::Value =
                 serde_json::from_slice(&body).context("parsing response json")?;
 
@@ -880,9 +816,7 @@ mod tests {
             let response = client.request(request).await?;
 
             assert_eq!(response.status(), StatusCode::OK);
-            let body = hyper::body::to_bytes(response)
-                .await
-                .context("reading response body")?;
+            let body = to_bytes(response).await.context("reading response body")?;
             let obj: serde_json::Value =
                 serde_json::from_slice(&body).context("parsing response json")?;
 
@@ -972,7 +906,7 @@ mod tests {
         // CUP attached.
         let request = Request::post(format!(
             "{}?cup2key={}:nonce",
-            &server_url,
+            server_url,
             make_default_public_key_id_for_test()
         ))
         .body(Body::from(body.to_string()))
@@ -992,9 +926,7 @@ mod tests {
     #[cfg_attr(
         feature = "tokio",
         tokio::test,
-        should_panic(
-            expected = "called `Result::unwrap()` on an `Err` value: hyper::Error(IncompleteMessage)"
-        )
+        should_panic(expected = "hyper::Error(IncompleteMessage)")
     )]
     async fn test_server_expect_cup_panic() {
         let server_url = OmahaServer::start_and_detach(

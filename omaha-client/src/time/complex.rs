@@ -32,7 +32,7 @@ pub mod complex_time_impls {
     ///```
     impl Display for ComplexTime {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{} at {:?}", &ReadableSystemTime(self.wall), self.mono)
+            write!(f, "{} at {:?}", ReadableSystemTime(self.wall), self.mono)
         }
     }
 
@@ -352,7 +352,7 @@ pub mod partial_complex_time_impls {
     impl Display for PartialComplexTime {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::Wall(w) => write!(f, "{} and No Monotonic", &ReadableSystemTime(*w)),
+                Self::Wall(w) => write!(f, "{} and No Monotonic", ReadableSystemTime(*w)),
                 Self::Monotonic(m) => write!(f, "No Wall and {m:?}"),
                 Self::Complex(t) => Display::fmt(t, f),
             }

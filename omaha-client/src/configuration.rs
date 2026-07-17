@@ -44,12 +44,12 @@ pub mod test_support {
     use super::*;
     use crate::cup_ecdsa::{PublicKeyAndId, PublicKeys};
     use p256::ecdsa::{SigningKey, VerifyingKey};
-    use signature::rand_core::OsRng;
+    use p256::elliptic_curve::Generate as _;
     use std::convert::TryInto;
 
     /// Handy generator for an updater configuration.  Used to reduce test boilerplate.
     pub fn config_generator() -> Config {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let omaha_public_keys = PublicKeys {
             latest: PublicKeyAndId {
                 id: 42.try_into().unwrap(),

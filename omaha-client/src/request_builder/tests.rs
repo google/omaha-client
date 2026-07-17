@@ -304,7 +304,7 @@ fn test_single_request() {
     // Extract the request body out into a concatenated stream of Chunks, into a slice, so
     // that serde can be used to parse the body into a JSON Value object that can be compared
     // with the expected json constructed above.
-    let body = block_on(hyper::body::to_bytes(body)).unwrap();
+    let body = block_on(crate::http_request::to_bytes(body)).unwrap();
     let actual: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(expected, actual);
@@ -476,9 +476,9 @@ fn test_multiple_events() {
     assert_eq!(event.errorcode, Some(EventErrorCode::DeniedByPolicy));
 }
 
-/// When adding multiple apps to a request, a ping or an event needs to be attached to the
-/// correct app entry in the protocol request.  The next few tests are centered on validating
-/// that in various scenarios.
+// When adding multiple apps to a request, a ping or an event needs to be attached to the
+// correct app entry in the protocol request. The next few tests are centered on validating
+// that in various scenarios.
 
 /// This test ensures that if the matching app entry is the first one in the request, that the
 /// ping is attached to it (and not the last that was added).

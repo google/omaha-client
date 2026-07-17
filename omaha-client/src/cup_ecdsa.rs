@@ -13,7 +13,6 @@ use p256::ecdsa::{DerSignature, signature::Verifier as _};
 use rand::{Rng, thread_rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256, digest};
-use signature::Signature;
 use std::{collections::HashMap, convert::TryInto, fmt, fmt::Debug};
 
 /// Error enum listing different kinds of CUPv2 decoration errors.
@@ -437,11 +436,8 @@ pub mod test_support {
             request_metadata.public_key_id,
             &request_metadata.nonce,
         );
-        signing_key
-            .sign(&transaction_hash)
-            .to_der()
-            .as_bytes()
-            .to_vec()
+        let sig: ecdsa::Signature<p256::NistP256> = signing_key.sign(&transaction_hash);
+        sig.to_der().as_bytes().to_vec()
     }
 
     // Mock Cupv2Handler which can be used to fail at request decoration or verification.
@@ -499,8 +495,8 @@ pub mod test_support {
             resp: &Response<Vec<u8>>,
             public_key_id: PublicKeyId,
         ) -> Result<DerSignature, CupVerificationError> {
-            use rand::rngs::OsRng;
-            let signing_key = SigningKey::random(&mut OsRng);
+            use p256::elliptic_curve::Generate as _;
+            let signing_key = SigningKey::generate();
             let signature = DerSignature::from_bytes(&make_expected_signature_for_test(
                 &signing_key,
                 request_metadata,
@@ -694,7 +690,7 @@ mod tests {
             response_body.as_bytes(),
         ));
 
-        for (etag, public_key_id, expected_err) in vec![
+        for (etag, public_key_id, expected_err) in [
             // This etag doesn't even have the form foo:bar.
             (
                 "bar",

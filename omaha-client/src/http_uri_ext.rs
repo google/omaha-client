@@ -56,11 +56,8 @@ impl HttpUriExt for Uri {
         let mut base_parts = self.into_parts();
         let new_path_and_query = match &base_parts.path_and_query {
             Some(path_and_query) => {
-                let path = if path_and_query.path().is_empty() {
-                    "/"
-                } else {
-                    path_and_query.path()
-                };
+                let path =
+                    if path_and_query.path().is_empty() { "/" } else { path_and_query.path() };
                 if let Some(query) = path_and_query.query() {
                     format!("{path}?{query}&{key}={value}")
                 } else {
@@ -98,9 +95,7 @@ mod tests {
     }
 
     fn assert_expected_path(base: Option<&str>, added: &str, expected: Option<&str>) {
-        let uri = make_uri_from_path_and_query(base)
-            .extend_dir_with_path(added)
-            .unwrap();
+        let uri = make_uri_from_path_and_query(base).extend_dir_with_path(added).unwrap();
         assert_eq!(
             uri.into_parts().path_and_query.map(|p| p.to_string()),
             expected.map(|s| s.to_string())
@@ -142,9 +137,7 @@ mod tests {
     }
 
     fn assert_expected_param(base: Option<&str>, key: &str, value: &str, expected: Option<&str>) {
-        let uri = make_uri_from_path_and_query(base)
-            .append_query_parameter(key, value)
-            .unwrap();
+        let uri = make_uri_from_path_and_query(base).append_query_parameter(key, value).unwrap();
         assert_eq!(
             uri.into_parts().path_and_query.map(|p| p.to_string()),
             expected.map(|s| s.to_string())

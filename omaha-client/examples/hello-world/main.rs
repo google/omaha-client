@@ -91,10 +91,8 @@ async fn main_inner() -> Result<(), Error> {
 
     // The cup handler is required for the state machine, but does not require explicit
     // initialization, the standard handler will do just fine.
-    let cup_handler: Option<StandardCupv2Handler> = platform_config
-        .omaha_public_keys
-        .as_ref()
-        .map(StandardCupv2Handler::new);
+    let cup_handler: Option<StandardCupv2Handler> =
+        platform_config.omaha_public_keys.as_ref().map(StandardCupv2Handler::new);
 
     // Example app and app_set we use for this hello world program.
     // The following app corresponds to the system image for the Nest Hub 1st gen ("Astro")
@@ -137,9 +135,7 @@ async fn main_inner() -> Result<(), Error> {
 
     let app_set = Rc::new(Mutex::new(MinimalAppSet::new(
         app,
-        AppMetadata {
-            appid_source: app_set::AppIdSource::DefaultEmpty,
-        },
+        AppMetadata { appid_source: app_set::AppIdSource::DefaultEmpty },
     )));
 
     // Installer

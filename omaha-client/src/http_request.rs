@@ -106,10 +106,7 @@ impl Error {
     /// This is valid for use in tests as well as production implementations of the trait, if
     /// application-layer timeouts are being implemented.
     pub fn new_timeout() -> Self {
-        Self {
-            kind: ErrorKind::Timeout,
-            source: None,
-        }
+        Self { kind: ErrorKind::Timeout, source: None }
     }
 
     /// Returns true if this error the result of the Hyper API being incorrectly used (a "user"
@@ -128,24 +125,14 @@ impl Error {
 
     /// Create a transport error wrapping an underlying source error.
     pub fn new_transport(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
-        Self {
-            kind: ErrorKind::Transport,
-            source: Some(error.into()),
-        }
+        Self { kind: ErrorKind::Transport, source: Some(error.into()) }
     }
 }
 
 impl From<hyper::Error> for Error {
     fn from(error: hyper::Error) -> Self {
-        let kind = if error.is_user() {
-            ErrorKind::User
-        } else {
-            ErrorKind::Transport
-        };
-        Error {
-            kind,
-            source: Some(Box::new(error)),
-        }
+        let kind = if error.is_user() { ErrorKind::User } else { ErrorKind::Transport };
+        Error { kind, source: Some(Box::new(error)) }
     }
 }
 
@@ -153,17 +140,11 @@ pub mod mock_errors {
     use super::*;
 
     pub fn make_user_error() -> Error {
-        Error {
-            kind: ErrorKind::User,
-            source: None,
-        }
+        Error { kind: ErrorKind::User, source: None }
     }
 
     pub fn make_transport_error() -> Error {
-        Error {
-            kind: ErrorKind::Transport,
-            source: None,
-        }
+        Error { kind: ErrorKind::Transport, source: None }
     }
 }
 

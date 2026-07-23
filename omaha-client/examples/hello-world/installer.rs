@@ -69,11 +69,8 @@ impl Installer for MinimalInstaller {
             ))
             .boxed_local()
         } else {
-            future::ready((
-                MinimalInstallResult::Installed,
-                vec![AppInstallResult::Installed],
-            ))
-            .boxed_local()
+            future::ready((MinimalInstallResult::Installed, vec![AppInstallResult::Installed]))
+                .boxed_local()
         }
     }
 

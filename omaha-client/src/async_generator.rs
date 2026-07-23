@@ -37,11 +37,7 @@ where
     R: Send + 'static,
 {
     let (send, recv) = mpsc::channel(0);
-    Generator {
-        task: cb(Yield(send)).fuse(),
-        stream: recv,
-        res: None,
-    }
+    Generator { task: cb(Yield(send)).fuse(), stream: recv, res: None }
 }
 
 /// Control handle to yield items to the coroutine.
@@ -379,10 +375,7 @@ mod tests {
 
         block_on(async {
             let res = make_s().collect::<Vec<GeneratorState<u8, ()>>>().await;
-            assert_eq!(
-                res,
-                vec![GeneratorState::Yielded(8), GeneratorState::Complete(())]
-            );
+            assert_eq!(res, vec![GeneratorState::Yielded(8), GeneratorState::Complete(())]);
             assert_eq!(finished.take(), 1);
         });
 

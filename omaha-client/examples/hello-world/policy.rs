@@ -55,9 +55,7 @@ impl Policy for MinimalPolicy {
         _protocol_state: &ProtocolState,
         _check_options: &CheckOptions,
     ) -> CheckDecision {
-        CheckDecision::Ok(RequestParams {
-            ..Default::default()
-        })
+        CheckDecision::Ok(RequestParams { ..Default::default() })
     }
 
     // This minimal example always accepts updates
@@ -90,10 +88,7 @@ pub struct MinimalPolicyEngine<T> {
 
 impl<T> MinimalPolicyEngine<T> {
     pub fn new(time_source: T, metrics: MinimalMetricsReporter) -> Self {
-        Self {
-            time_source,
-            metrics,
-        }
+        Self { time_source, metrics }
     }
 }
 

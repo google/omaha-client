@@ -30,21 +30,14 @@ pub struct MinimalAppSet {
 
 impl MinimalAppSet {
     pub fn new(system_app: App, system_app_metadata: AppMetadata) -> Self {
-        Self {
-            system_app,
-            system_app_metadata,
-        }
+        Self { system_app, system_app_metadata }
     }
 
     /// Get the system product id.
     /// Returns empty string if product id not set for the system app.
     #[expect(dead_code)]
     pub fn get_system_product_id(&self) -> &str {
-        self.system_app
-            .extra_fields
-            .get("product_id")
-            .map(|s| &**s)
-            .unwrap_or("")
+        self.system_app.extra_fields.get("product_id").map(|s| &**s).unwrap_or("")
     }
 
     /// Get the current channel name from cohort name, returns empty string if no cohort name set

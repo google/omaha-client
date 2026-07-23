@@ -100,10 +100,7 @@ mod tests {
             App::builder().id("some_id").version([0, 1]).build(),
             App::builder().id("not_updated_id").version([2]).build(),
         ]);
-        let cohort = Cohort {
-            name: Some("some-channel".to_string()),
-            ..Cohort::default()
-        };
+        let cohort = Cohort { name: Some("some-channel".to_string()), ..Cohort::default() };
         let user_counting = UserCounting::ClientRegulatedByDate(Some(42));
         let app_responses = vec![
             AppResponse {
@@ -125,10 +122,7 @@ mod tests {
         assert_eq!(cohort, apps[0].cohort);
         assert_eq!(user_counting, apps[0].user_counting);
 
-        assert_eq!(
-            apps[1],
-            App::builder().id("not_updated_id").version([2]).build()
-        );
+        assert_eq!(apps[1], App::builder().id("not_updated_id").version([2]).build());
     }
 
     #[test]

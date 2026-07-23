@@ -40,10 +40,7 @@ pub enum StorageErrors {
 
 impl MemStorage {
     pub fn new() -> Self {
-        MemStorage {
-            data: HashMap::new(),
-            committed: true,
-        }
+        MemStorage { data: HashMap::new(), committed: true }
     }
 
     pub fn committed(&self) -> bool {
@@ -102,8 +99,7 @@ impl Storage for MemStorage {
         key: &'a str,
         value: &'a str,
     ) -> BoxFuture<'a, Result<(), Self::Error>> {
-        self.data
-            .insert(key.to_string(), Value::String(value.to_string()));
+        self.data.insert(key.to_string(), Value::String(value.to_string()));
         self.committed = false;
         future::ready(Ok(())).boxed()
     }
@@ -183,9 +179,7 @@ mod tests {
 
     #[test]
     fn test_ensure_no_error_remove_nonexistent_key() {
-        block_on(do_ensure_no_error_remove_nonexistent_key(
-            &mut MemStorage::new(),
-        ));
+        block_on(do_ensure_no_error_remove_nonexistent_key(&mut MemStorage::new()));
     }
 
     #[test]
@@ -197,10 +191,7 @@ mod tests {
             assert!(!storage.committed());
             storage.commit().await.unwrap();
             assert!(storage.committed());
-            storage
-                .set_string("some string key", "some string")
-                .await
-                .unwrap();
+            storage.set_string("some string key", "some string").await.unwrap();
             assert!(!storage.committed());
             storage.set_int("some int key", 42).await.unwrap();
             assert!(!storage.committed());

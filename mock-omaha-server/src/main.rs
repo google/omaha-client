@@ -67,10 +67,7 @@ struct Args {
     )]
     listen_on: Ipv6Addr,
 
-    #[argh(
-        switch,
-        description = "if 'true', will only accept requests with CUP enabled."
-    )]
+    #[argh(switch, description = "if 'true', will only accept requests with CUP enabled.")]
     require_cup: bool,
 }
 

@@ -40,10 +40,7 @@ pub mod complex_time_impls {
         type Output = Self;
 
         fn add(self, dur: Duration) -> Self {
-            Self {
-                wall: self.wall + dur,
-                mono: self.mono + dur,
-            }
+            Self { wall: self.wall + dur, mono: self.mono + dur }
         }
     }
 
@@ -83,10 +80,7 @@ pub mod complex_time_impls {
 
         #[test]
         fn test_truncate_submicrosecond_walltime() {
-            let time = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let time = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             assert_eq!(
                 time.truncate_submicrosecond_walltime().wall,
                 system_time_conversion::micros_from_epoch_to_system_time(
@@ -98,18 +92,9 @@ pub mod complex_time_impls {
 
         #[test]
         fn test_wall_duration_since() {
-            let early = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
-            let later = ComplexTime {
-                wall: early.wall + Duration::from_secs(200),
-                ..early
-            };
-            assert_eq!(
-                later.wall_duration_since(early).unwrap(),
-                Duration::from_secs(200)
-            )
+            let early = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
+            let later = ComplexTime { wall: early.wall + Duration::from_secs(200), ..early };
+            assert_eq!(later.wall_duration_since(early).unwrap(), Duration::from_secs(200))
         }
 
         #[test]
@@ -153,10 +138,7 @@ pub mod complex_time_impls {
 
         #[test]
         fn test_complex_time_impl_add() {
-            let earlier = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let earlier = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             let dur = Duration::from_secs(60 * 60);
 
             let later = earlier + dur;
@@ -170,10 +152,7 @@ pub mod complex_time_impls {
 
         #[test]
         fn test_complex_time_impl_add_assign() {
-            let mut time = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let mut time = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             let earlier = time;
             let dur = Duration::from_secs(60 * 60);
 
@@ -193,10 +172,7 @@ pub mod complex_time_impls {
             // synthetic now we'll use in tests that's at least 24 hours from the real `now()`
             // value.
             let mono = Instant::now() + Duration::from_secs(24 * 60 * 60);
-            let time = ComplexTime {
-                wall: SystemTime::now(),
-                mono,
-            };
+            let time = ComplexTime { wall: SystemTime::now(), mono };
             let dur = Duration::from_secs(60 * 60);
             let earlier = time - dur;
 
@@ -214,10 +190,7 @@ pub mod complex_time_impls {
             // synthetic now we'll use in tests that's at least 24 hours from the real `now()`
             // value.
             let mono = Instant::now() + Duration::from_secs(24 * 60 * 60);
-            let mut time = ComplexTime {
-                wall: SystemTime::now(),
-                mono,
-            };
+            let mut time = ComplexTime { wall: SystemTime::now(), mono };
             let before_sub = time;
             let dur = Duration::from_secs(60 * 60);
 
@@ -244,10 +217,7 @@ pub mod complex_time_type_conversions {
 
     impl From<(SystemTime, Instant)> for ComplexTime {
         fn from(t: (SystemTime, Instant)) -> ComplexTime {
-            ComplexTime {
-                wall: t.0,
-                mono: t.1,
-            }
+            ComplexTime { wall: t.0, mono: t.1 }
         }
     }
 
@@ -275,19 +245,13 @@ pub mod complex_time_type_conversions {
             let instant = Instant::now();
             assert_eq!(
                 ComplexTime::from((system_time, instant)),
-                ComplexTime {
-                    wall: system_time,
-                    mono: instant
-                }
+                ComplexTime { wall: system_time, mono: instant }
             );
         }
 
         #[test]
         fn test_from_complex_time_for_instant() {
-            let time = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let time = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             let instant_from_time: Instant = Instant::from(time);
             let time_into_instant: Instant = time.into();
 
@@ -298,10 +262,7 @@ pub mod complex_time_type_conversions {
 
         #[test]
         fn test_from_complex_time_for_system_time() {
-            let time = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let time = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             let system_from_time: SystemTime = SystemTime::from(time);
             let time_into_system: SystemTime = time.into();
 
@@ -609,22 +570,13 @@ pub mod partial_complex_time_type_conversions {
 
         #[test]
         fn test_from_complex_time_for_partial_complex_time() {
-            let complex = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
-            assert_eq!(
-                PartialComplexTime::from(complex),
-                PartialComplexTime::Complex(complex)
-            );
+            let complex = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
+            assert_eq!(PartialComplexTime::from(complex), PartialComplexTime::Complex(complex));
         }
 
         #[test]
         fn test_from_complex_time_for_option_partial_complex_time() {
-            let complex = ComplexTime {
-                wall: SystemTime::now(),
-                mono: Instant::now(),
-            };
+            let complex = ComplexTime { wall: SystemTime::now(), mono: Instant::now() };
             assert_eq!(
                 Option::<PartialComplexTime>::from(complex),
                 Some(PartialComplexTime::Complex(complex))
@@ -643,10 +595,7 @@ pub mod partial_complex_time_type_conversions {
         #[test]
         fn test_from_instant_for_partial_complex_time() {
             let instant = Instant::now();
-            assert_eq!(
-                PartialComplexTime::from(instant),
-                PartialComplexTime::Monotonic(instant)
-            );
+            assert_eq!(PartialComplexTime::from(instant), PartialComplexTime::Monotonic(instant));
         }
 
         #[test]
@@ -658,16 +607,10 @@ pub mod partial_complex_time_type_conversions {
                 PartialComplexTime::from(system_time),
                 PartialComplexTime::Wall(system_time)
             );
-            assert_eq!(
-                PartialComplexTime::from(instant),
-                PartialComplexTime::Monotonic(instant)
-            );
+            assert_eq!(PartialComplexTime::from(instant), PartialComplexTime::Monotonic(instant));
             assert_eq!(
                 PartialComplexTime::from((system_time, instant)),
-                PartialComplexTime::Complex(ComplexTime {
-                    wall: system_time,
-                    mono: instant
-                })
+                PartialComplexTime::Complex(ComplexTime { wall: system_time, mono: instant })
             );
         }
 
@@ -682,10 +625,7 @@ pub mod partial_complex_time_type_conversions {
                 PartialComplexTime::Wall(system_time).checked_to_system_time(),
                 Some(system_time)
             );
-            assert_eq!(
-                PartialComplexTime::Monotonic(instant).checked_to_system_time(),
-                None
-            );
+            assert_eq!(PartialComplexTime::Monotonic(instant).checked_to_system_time(), None);
             assert_eq!(
                 PartialComplexTime::Complex((system_time, instant).into()).checked_to_system_time(),
                 Some(system_time)
@@ -699,9 +639,7 @@ pub mod partial_complex_time_type_conversions {
 
             assert_eq!(
                 123456789,
-                PartialComplexTime::Wall(system_time)
-                    .checked_to_micros_since_epoch()
-                    .unwrap()
+                PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch().unwrap()
             );
             assert_eq!(
                 123456789,
@@ -722,9 +660,7 @@ pub mod partial_complex_time_type_conversions {
 
             assert_eq!(
                 -123456789,
-                PartialComplexTime::Wall(system_time)
-                    .checked_to_micros_since_epoch()
-                    .unwrap()
+                PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch().unwrap()
             );
             assert_eq!(
                 -123456789,
@@ -741,19 +677,13 @@ pub mod partial_complex_time_type_conversions {
         #[test]
         fn test_checked_to_micros_from_partial_complex_time_overflow_is_none() {
             let system_time = SystemTime::UNIX_EPOCH + 2 * Duration::from_micros(u64::MAX);
-            assert_eq!(
-                None,
-                PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch()
-            );
+            assert_eq!(None, PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch());
         }
 
         #[test]
         fn test_checked_to_micros_from_partial_complex_time_negative_overflow_is_none() {
             let system_time = SystemTime::UNIX_EPOCH - 2 * Duration::from_micros(u64::MAX);
-            assert_eq!(
-                None,
-                PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch()
-            );
+            assert_eq!(None, PartialComplexTime::Wall(system_time).checked_to_micros_since_epoch());
         }
 
         #[test]
@@ -768,14 +698,8 @@ pub mod partial_complex_time_type_conversions {
 
             let other = complex + Duration::from_micros(500);
 
-            assert_eq!(
-                wall.complete_with(other),
-                ComplexTime::from((system_time, other.mono))
-            );
-            assert_eq!(
-                mono.complete_with(other),
-                ComplexTime::from((other.wall, instant))
-            );
+            assert_eq!(wall.complete_with(other), ComplexTime::from((system_time, other.mono)));
+            assert_eq!(mono.complete_with(other), ComplexTime::from((other.wall, instant)));
             assert_eq!(comp.complete_with(other), complex);
         }
 
@@ -838,19 +762,13 @@ pub mod system_time_conversion {
         #[test]
         fn test_system_time_to_micros() {
             let system_time = SystemTime::UNIX_EPOCH + Duration::from_micros(123456789);
-            assert_eq!(
-                checked_system_time_to_micros_from_epoch(system_time).unwrap(),
-                123456789
-            )
+            assert_eq!(checked_system_time_to_micros_from_epoch(system_time).unwrap(), 123456789)
         }
 
         #[test]
         fn test_system_time_to_micros_negative() {
             let system_time = SystemTime::UNIX_EPOCH - Duration::from_micros(123456789);
-            assert_eq!(
-                checked_system_time_to_micros_from_epoch(system_time).unwrap(),
-                -123456789
-            )
+            assert_eq!(checked_system_time_to_micros_from_epoch(system_time).unwrap(), -123456789)
         }
 
         #[test]

@@ -169,10 +169,7 @@ mod tests {
     #[test]
     fn test_version_to_string() {
         assert_eq!(&"1.2".parse::<Version>().unwrap().to_string(), "1.2.0.0");
-        assert_eq!(
-            &"1.2.3.4".parse::<Version>().unwrap().to_string(),
-            "1.2.3.4"
-        );
+        assert_eq!(&"1.2.3.4".parse::<Version>().unwrap().to_string(), "1.2.3.4");
         assert_eq!(&"1".parse::<Version>().unwrap().to_string(), "1.0.0.0");
         assert_eq!(&"3.2.1".parse::<Version>().unwrap().to_string(), "3.2.1.0");
     }

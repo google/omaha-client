@@ -14,16 +14,11 @@ pub struct MinimalTimer;
 
 impl MinimalTimer {
     fn duration_until_system_time(system: SystemTime) -> Duration {
-        system
-            .duration_since(SystemTime::now())
-            .ok()
-            .unwrap_or(Duration::from_secs(0))
+        system.duration_since(SystemTime::now()).ok().unwrap_or(Duration::from_secs(0))
     }
 
     fn duration_until_instant(instant: std::time::Instant) -> Duration {
-        instant
-            .checked_duration_since(std::time::Instant::now())
-            .unwrap_or(Duration::from_secs(0))
+        instant.checked_duration_since(std::time::Instant::now()).unwrap_or(Duration::from_secs(0))
     }
 }
 

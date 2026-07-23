@@ -24,16 +24,9 @@ pub use stub::StubMetricsReporter;
 pub enum Metrics {
     /// Elapsed time from sending an update check to getting a response from Omaha, with a bool to
     /// hold whether that was a success or a failure.
-    UpdateCheckResponseTime {
-        response_time: Duration,
-        successful: bool,
-    },
+    UpdateCheckResponseTime { response_time: Duration, successful: bool },
     /// Elapsed time from the previous update check to the current update check.
-    UpdateCheckInterval {
-        interval: Duration,
-        clock: ClockType,
-        install_source: InstallSource,
-    },
+    UpdateCheckInterval { interval: Duration, clock: ClockType, install_source: InstallSource },
     /// Elapsed time from starting an update to having successfully applied it.
     SuccessfulUpdateDuration(Duration),
     /// Elapsed time from first seeing an update to having successfully applied it.

@@ -72,9 +72,7 @@ impl MockTimeSource {
     /// let next_time = mock_source.now();
     /// ```
     pub fn new(t: impl Into<ComplexTime>) -> Self {
-        MockTimeSource {
-            time: Arc::new(RwLock::new(t.into())),
-        }
+        MockTimeSource { time: Arc::new(RwLock::new(t.into())) }
     }
 
     /// Create a new `MockTimeSource`, initialized to the values from `SystemTime` and `Instant`

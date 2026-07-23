@@ -289,10 +289,8 @@ where
         let context = {
             let storage = storage.lock().await;
             let mut app_set = app_set.lock().await;
-            let ((), context) = futures::join!(
-                app_set.load(&*storage),
-                update_check::Context::load(&*storage)
-            );
+            let ((), context) =
+                futures::join!(app_set.load(&*storage), update_check::Context::load(&*storage));
             log::info!("Omaha app set: {:?}", app_set.get_apps());
             context
         };
@@ -334,9 +332,7 @@ where
         let request_params = RequestParams::default();
 
         async_generator::generate(move |mut co| async move {
-            state_machine
-                .start_update_check(request_params, &mut co)
-                .await;
+            state_machine.start_update_check(request_params, &mut co).await;
         })
         .into_yielded()
     }

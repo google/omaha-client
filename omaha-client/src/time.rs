@@ -189,19 +189,14 @@ impl PartialComplexTime {
     /// Return the PartialComplexTime::Wall that represents the same time as the specified
     /// microseconds from the UNIX Epoch (1970-01-01 UTC)
     pub fn from_micros_since_epoch(micros: i64) -> Self {
-        PartialComplexTime::from(system_time_conversion::micros_from_epoch_to_system_time(
-            micros,
-        ))
+        PartialComplexTime::from(system_time_conversion::micros_from_epoch_to_system_time(micros))
     }
 
     /// Return a new ComplexTime that's based on the time values of this PartialComplexTime,
     /// setting either unknown field from the passed-in ComplexTime.
     pub fn complete_with(&self, complex: ComplexTime) -> ComplexTime {
         let (system, instant) = self.destructure();
-        ComplexTime::from((
-            system.unwrap_or(complex.wall),
-            instant.unwrap_or(complex.mono),
-        ))
+        ComplexTime::from((system.unwrap_or(complex.wall), instant.unwrap_or(complex.mono)))
     }
 
     /// Destructure the PartialComplexTime into it's two components, each as an Option.

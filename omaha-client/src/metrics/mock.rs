@@ -18,29 +18,19 @@ pub struct MockMetricsReporter {
 
 impl MockMetricsReporter {
     pub fn new_failing() -> Self {
-        MockMetricsReporter {
-            should_fail: true,
-            metrics: vec![],
-        }
+        MockMetricsReporter { should_fail: true, metrics: vec![] }
     }
 
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        MockMetricsReporter {
-            should_fail: false,
-            metrics: vec![],
-        }
+        MockMetricsReporter { should_fail: false, metrics: vec![] }
     }
 }
 
 impl MetricsReporter for MockMetricsReporter {
     fn report_metrics(&mut self, metrics: Metrics) -> Result<(), Error> {
         self.metrics.push(metrics);
-        if self.should_fail {
-            Err(format_err!("should_fail is true"))
-        } else {
-            Ok(())
-        }
+        if self.should_fail { Err(format_err!("should_fail is true")) } else { Ok(()) }
     }
 }
 

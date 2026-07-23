@@ -44,19 +44,11 @@ pub struct Cohort {
 impl Cohort {
     /// Create a new Cohort instance from just a cohort id (channel name).
     pub fn new(id: &str) -> Cohort {
-        Cohort {
-            id: Some(id.to_string()),
-            hint: None,
-            name: None,
-        }
+        Cohort { id: Some(id.to_string()), hint: None, name: None }
     }
 
     pub fn from_hint(hint: &str) -> Cohort {
-        Cohort {
-            id: None,
-            hint: Some(hint.to_string()),
-            name: None,
-        }
+        Cohort { id: None, hint: Some(hint.to_string()), name: None }
     }
 
     pub fn update_from_omaha(&mut self, omaha_cohort: Self) {

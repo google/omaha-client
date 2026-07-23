@@ -59,10 +59,7 @@ pub mod test_support {
         };
 
         Config {
-            updater: Updater {
-                name: "updater".to_string(),
-                version: Version::from([1, 2, 3, 4]),
-            },
+            updater: Updater { name: "updater".to_string(), version: Version::from([1, 2, 3, 4]) },
             os: OS {
                 platform: "platform".to_string(),
                 version: "0.1.2.3".to_string(),

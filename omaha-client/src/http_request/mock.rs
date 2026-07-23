@@ -32,10 +32,7 @@ impl HttpRequest for MockHttpRequest {
             resp
         } else {
             // No response to return, generate a 500 internal server error
-            Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(vec![])
-                .unwrap())
+            Ok(Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body(vec![]).unwrap())
         })
         .boxed()
     }
@@ -43,10 +40,7 @@ impl HttpRequest for MockHttpRequest {
 
 impl MockHttpRequest {
     pub fn new(res: Response<Vec<u8>>) -> Self {
-        Self {
-            responses: vec![Ok(res)].into(),
-            ..Default::default()
-        }
+        Self { responses: vec![Ok(res)].into(), ..Default::default() }
     }
 
     pub fn empty() -> Self {
@@ -54,10 +48,7 @@ impl MockHttpRequest {
     }
 
     pub fn from_request_cell(request: Rc<RefCell<Vec<Request<Body>>>>) -> Self {
-        Self {
-            requests: request,
-            ..Default::default()
-        }
+        Self { requests: request, ..Default::default() }
     }
 
     pub fn get_request_cell(&self) -> Rc<RefCell<Vec<Request<Body>>>> {
@@ -113,10 +104,8 @@ fn test_mock() {
 
     let req_body = vec![4, 5, 6];
     let uri = "https://mock.uri/";
-    let req = Request::get(uri)
-        .header("X-Custom-Foo", "Bar")
-        .body(req_body.clone().into())
-        .unwrap();
+    let req =
+        Request::get(uri).header("X-Custom-Foo", "Bar").body(req_body.clone().into()).unwrap();
     block_on(async {
         let response = mock.request(req).await.unwrap();
         assert_eq!(res_body, response.into_body());

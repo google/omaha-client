@@ -233,11 +233,7 @@ impl Cupv2RequestHandler for StandardCupv2Handler {
         let uri = uri.append_query_parameter("cup2key", &format!("{public_key_id}:{nonce}"))?;
         request.set_uri(uri.to_string());
 
-        Ok(RequestMetadata {
-            request_body: request.get_serialized_body()?,
-            public_key_id,
-            nonce,
-        })
+        Ok(RequestMetadata { request_body: request.get_serialized_body()?, public_key_id, nonce })
     }
 
     fn verify_response(
@@ -269,9 +265,8 @@ impl Cupv2RequestHandler for StandardCupv2Handler {
             .map_err(CupVerificationError::EtagNotString)
             .map(parse_etag)?;
 
-        let (encoded_signature, hex_hash): (&str, &str) = etag_header
-            .split_once(':')
-            .ok_or(CupVerificationError::EtagMalformed)?;
+        let (encoded_signature, hex_hash): (&str, &str) =
+            etag_header.split_once(':').ok_or(CupVerificationError::EtagMalformed)?;
 
         let actual_hash =
             &hex::decode(hex_hash).map_err(|_| CupVerificationError::RequestHashMalformed)?;
@@ -384,10 +379,7 @@ pub mod test_support {
     }
 
     pub fn make_keys_for_test() -> (SigningKey, PublicKey) {
-        (
-            make_default_private_key_for_test(),
-            make_default_public_key_for_test(),
-        )
+        (make_default_private_key_for_test(), make_default_public_key_for_test())
     }
 
     pub fn make_public_keys_for_test(
@@ -395,10 +387,7 @@ pub mod test_support {
         public_key: PublicKey,
     ) -> PublicKeys {
         PublicKeys {
-            latest: PublicKeyAndId {
-                id: public_key_id,
-                key: public_key,
-            },
+            latest: PublicKeyAndId { id: public_key_id, key: public_key },
             historical: vec![],
         }
     }
@@ -595,19 +584,14 @@ mod tests {
         let mut intermediate = Intermediate {
             uri: "http://[::1%eth0]".to_string(),
             headers: [].into(),
-            body: RequestWrapper {
-                request: Request::default(),
-            },
+            body: RequestWrapper { request: Request::default() },
         };
 
         let request_metadata = cup_handler.decorate_request(&mut intermediate)?;
 
         assert_eq!(
             intermediate.uri,
-            format!(
-                "http://[::1%eth0]/?cup2key={}:{}",
-                public_key_id, request_metadata.nonce,
-            )
+            format!("http://[::1%eth0]/?cup2key={}:{}", public_key_id, request_metadata.nonce,)
         );
 
         // Assert that the nonce is being generated randomly inline (i.e. not the default value).
@@ -628,9 +612,8 @@ mod tests {
         let request_metadata = cup_handler.decorate_request(&mut intermediate)?;
 
         // No .header(ETAG, <val>), which is a problem.
-        let response: Response<Vec<u8>> = hyper::Response::builder()
-            .status(200)
-            .body("foo".as_bytes().to_vec())?;
+        let response: Response<Vec<u8>> =
+            hyper::Response::builder().status(200).body("foo".as_bytes().to_vec())?;
 
         assert_matches!(
             cup_handler.verify_response(&request_metadata, &response, public_key_id),
@@ -692,17 +675,9 @@ mod tests {
 
         for (etag, public_key_id, expected_err) in [
             // This etag doesn't even have the form foo:bar.
-            (
-                "bar",
-                correct_public_key_id,
-                Some(CupVerificationError::EtagMalformed),
-            ),
+            ("bar", correct_public_key_id, Some(CupVerificationError::EtagMalformed)),
             // This etag has the form foo:bar, but the latter isn't a real hash.
-            (
-                "foo:bar",
-                correct_public_key_id,
-                Some(CupVerificationError::RequestHashMalformed),
-            ),
+            ("foo:bar", correct_public_key_id, Some(CupVerificationError::RequestHashMalformed)),
             // This hash is the right length, but doesn't decode to the right value.
             (
                 &format!("foo:{}", hex::encode([1; 32])),
@@ -730,19 +705,14 @@ mod tests {
                 Some(CupVerificationError::SpecifiedPublicKeyIdMissing),
             ),
             // Finally, the happy path.
-            (
-                &format!("{expected_signature}:{expected_hash_hex}",),
-                correct_public_key_id,
-                None,
-            ),
+            (&format!("{expected_signature}:{expected_hash_hex}",), correct_public_key_id, None),
         ] {
             let response: Response<Vec<u8>> = hyper::Response::builder()
                 .status(200)
                 .header(ETAG, etag)
                 .body(response_body.as_bytes().to_vec())?;
-            let actual_err = cup_handler
-                .verify_response(&request_metadata, &response, public_key_id)
-                .err();
+            let actual_err =
+                cup_handler.verify_response(&request_metadata, &response, public_key_id).err();
             assert_eq!(
                 actual_err, expected_err,
                 "Received error {actual_err:?}, expected error {expected_err:?}"
@@ -790,10 +760,7 @@ mod tests {
         let response_body_a = "foo";
 
         let public_keys = PublicKeys {
-            latest: PublicKeyAndId {
-                id: public_key_id_a,
-                key: public_key_a,
-            },
+            latest: PublicKeyAndId { id: public_key_id_a, key: public_key_a },
             historical: vec![],
         };
         let mut cup_handler = StandardCupv2Handler::new(&public_keys);
@@ -811,14 +778,8 @@ mod tests {
 
         // and redefine the cuphandler with new keys and knowledge of historical keys.
         let public_keys = PublicKeys {
-            latest: PublicKeyAndId {
-                id: public_key_id_b,
-                key: public_key_b,
-            },
-            historical: vec![PublicKeyAndId {
-                id: public_key_id_a,
-                key: public_key_a,
-            }],
+            latest: PublicKeyAndId { id: public_key_id_b, key: public_key_b },
+            historical: vec![PublicKeyAndId { id: public_key_id_a, key: public_key_a }],
         };
         cup_handler = StandardCupv2Handler::new(&public_keys);
 
@@ -839,19 +800,13 @@ mod tests {
         // finally, assert that verification fails if either (1) the hash, (2)
         // the stored response, or (3) the key ID itself is wrong.
         assert!(
-            cup_handler
-                .verify_response(&request_metadata_a, &response_a, public_key_id_b)
-                .is_err()
+            cup_handler.verify_response(&request_metadata_a, &response_a, public_key_id_b).is_err()
         );
         assert!(
-            cup_handler
-                .verify_response(&request_metadata_a, &response_b, public_key_id_a)
-                .is_err()
+            cup_handler.verify_response(&request_metadata_a, &response_b, public_key_id_a).is_err()
         );
         assert!(
-            cup_handler
-                .verify_response(&request_metadata_b, &response_a, public_key_id_a)
-                .is_err()
+            cup_handler.verify_response(&request_metadata_b, &response_a, public_key_id_a).is_err()
         );
 
         Ok(())
@@ -867,10 +822,7 @@ mod tests {
         ))
         .unwrap();
 
-        assert_eq!(
-            public_key_and_id.key,
-            test_support::make_default_public_key_for_test()
-        );
+        assert_eq!(public_key_and_id.key, test_support::make_default_public_key_for_test());
     }
 
     #[test]
@@ -887,30 +839,14 @@ mod tests {
     fn test_parse_etag() {
         // W/ prefix
         assert_eq!(parse_etag("W/\"foo\""), "foo");
-        assert_eq!(
-            parse_etag("W/\"thing-\"with\"-quotes\""),
-            "thing-\"with\"-quotes"
-        );
+        assert_eq!(parse_etag("W/\"thing-\"with\"-quotes\""), "thing-\"with\"-quotes");
         assert_eq!(parse_etag("W/\"\""), "");
         // only surrounding quotes
         assert_eq!(parse_etag("\"foo\""), "foo");
-        assert_eq!(
-            parse_etag("\"thing-\"with\"-quotes\""),
-            "thing-\"with\"-quotes",
-        );
+        assert_eq!(parse_etag("\"thing-\"with\"-quotes\""), "thing-\"with\"-quotes",);
         assert_eq!(parse_etag("\"\""), "");
         // otherwise, left unchanged
-        for v in [
-            "foo",
-            "1",
-            "W",
-            "W\"",
-            "W/\"",
-            "W/",
-            "w/\"bar\"",
-            "W/'bar'",
-            "",
-        ] {
+        for v in ["foo", "1", "W", "W\"", "W/\"", "W/", "w/\"bar\"", "W/'bar'", ""] {
             //
             assert_eq!(parse_etag(v), v);
         }

@@ -82,14 +82,12 @@ mod mock {
 
         /// Expect a wait until the given PartialComplexTime.
         pub fn expect_until(&mut self, time: impl Into<PartialComplexTime>) {
-            self.expected_waits
-                .push_back(ExpectedWait::Until(time.into()))
+            self.expected_waits.push_back(ExpectedWait::Until(time.into()))
         }
 
         /// Expect a wait for the given Duration.
         pub fn expect_for(&mut self, duration: Duration) {
-            self.expected_waits
-                .push_back(ExpectedWait::For(duration, duration))
+            self.expected_waits.push_back(ExpectedWait::For(duration, duration))
         }
 
         /// Add a new wait to the end of the expected durations.
@@ -312,12 +310,7 @@ mod blocking {
 
             async move {
                 let (send, recv) = oneshot::channel();
-                chan.send(BlockedTimer {
-                    wait,
-                    unblock: send,
-                })
-                .await
-                .unwrap();
+                chan.send(BlockedTimer { wait, unblock: send }).await.unwrap();
 
                 recv.await.unwrap();
             }

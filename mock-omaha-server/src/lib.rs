@@ -168,11 +168,8 @@ impl OmahaServer {
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
     ) -> Result<(String, Option<Task<()>>), Error> {
-        let addr = if let Some(a) = addr {
-            a
-        } else {
-            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
-        };
+        let addr =
+            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
 
         let listener = fasync::net::TcpListener::bind(&addr).expect("cannot bind to address");
 
@@ -207,15 +204,10 @@ impl OmahaServer {
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
     ) -> Result<(String, Option<Task<()>>), Error> {
-        let addr = if let Some(a) = addr {
-            a
-        } else {
-            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
-        };
+        let addr =
+            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
 
-        let listener = TcpListener::bind(&addr)
-            .await
-            .expect("cannot bind to address");
+        let listener = TcpListener::bind(&addr).await.expect("cannot bind to address");
 
         let addr = listener.local_addr()?;
 
@@ -247,15 +239,10 @@ impl OmahaServer {
         arc_server: Arc<Mutex<OmahaServer>>,
         addr: Option<SocketAddr>,
     ) -> Result<(String, Option<JoinHandle<()>>), Error> {
-        let addr = if let Some(a) = addr {
-            a
-        } else {
-            SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0)
-        };
+        let addr =
+            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
 
-        let listener = TcpListener::bind(&addr)
-            .await
-            .expect("cannot bind to address");
+        let listener = TcpListener::bind(&addr).await.expect("cannot bind to address");
 
         let addr = listener.local_addr()?;
 
@@ -305,11 +292,7 @@ fn make_etag(
                 "Could not find public_key_id {:?} in the private_keys map, which only knows about the latest key_id {:?} and the historical key_ids {:?}",
                 public_key_id,
                 private_keys.latest.id,
-                private_keys
-                    .historical
-                    .iter()
-                    .map(|pkid| pkid.id)
-                    .collect::<Vec<_>>(),
+                private_keys.historical.iter().map(|pkid| pkid.id).collect::<Vec<_>>(),
             );
             None
         }
@@ -325,11 +308,7 @@ fn make_etag(
     let transaction_hash = hasher.finalize();
 
     let sig: p256::ecdsa::Signature = private_key.sign(&transaction_hash);
-    Some(format!(
-        "{}:{}",
-        hex::encode(sig.to_der()),
-        hex::encode(request_hash)
-    ))
+    Some(format!("{}:{}", hex::encode(sig.to_der()), hex::encode(request_hash)))
 }
 
 pub async fn handle_request<B>(
@@ -358,9 +337,7 @@ where
 {
     assert_eq!(req.method(), Method::POST);
 
-    let req_body = to_bytes(req)
-        .await
-        .map_err(|_| anyhow::anyhow!("failed to read body"))?;
+    let req_body = to_bytes(req).await.map_err(|_| anyhow::anyhow!("failed to read body"))?;
     let req_json: HashMap<String, ResponseAndMetadata> =
         serde_json::from_slice(&req_body).expect("parse json");
     {
@@ -371,9 +348,7 @@ where
         omaha_server.responses_by_appid = req_json;
     }
 
-    let builder = Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_LENGTH, 0);
+    let builder = Response::builder().status(StatusCode::OK).header(header::CONTENT_LENGTH, 0);
     Ok(builder.body(empty_body()).unwrap())
 }
 
@@ -403,20 +378,14 @@ where
 
     let uri_string = req.uri().to_string();
 
-    let req_body = to_bytes(req)
-        .await
-        .map_err(|_| anyhow::anyhow!("failed to read body"))?;
+    let req_body = to_bytes(req).await.map_err(|_| anyhow::anyhow!("failed to read body"))?;
     let req_json: serde_json::Value = serde_json::from_slice(&req_body).expect("parse json");
 
     let request = req_json.get("request").unwrap();
     let apps = request.get("app").unwrap().as_array().unwrap();
 
     // If this request contains updatecheck, make sure the mock has the right number of configured apps.
-    match apps
-        .iter()
-        .filter(|app| app.get("updatecheck").is_some())
-        .count()
-    {
+    match apps.iter().filter(|app| app.get("updatecheck").is_some()).count() {
         0 => {}
         x => assert_eq!(x, omaha_server.responses_by_appid.len()),
     }
@@ -606,12 +575,8 @@ where
 
     // It is only possible to calculate an induced etag if the incoming request
     // had a valid cup2key query argument.
-    let induced_etag: Option<String> = make_etag(
-        &req_body,
-        &uri_string,
-        &omaha_server.private_keys,
-        &response_data,
-    );
+    let induced_etag: Option<String> =
+        make_etag(&req_body, &uri_string, &omaha_server.private_keys, &response_data);
 
     if omaha_server.require_cup && induced_etag.is_none() {
         panic!(
@@ -619,11 +584,7 @@ where
         );
     }
 
-    if let Some(etag) = omaha_server
-        .etag_override
-        .as_ref()
-        .or(induced_etag.as_ref())
-    {
+    if let Some(etag) = omaha_server.etag_override.as_ref().or(induced_etag.as_ref()) {
         builder = builder.header(header::ETAG, etag);
     }
 
@@ -687,9 +648,7 @@ mod tests {
                 ]
             }
         });
-        let request = Request::post(&server)
-            .body(Body::from(body.to_string()))
-            .unwrap();
+        let request = Request::post(&server).body(Body::from(body.to_string())).unwrap();
 
         let response = client.request(request).await?;
 
@@ -756,9 +715,7 @@ mod tests {
                     ]
                 }
             });
-            let request = Request::post(&server_url)
-                .body(Body::from(body.to_string()))
-                .unwrap();
+            let request = Request::post(&server_url).body(Body::from(body.to_string())).unwrap();
 
             let response = client.request(request).await?;
 
@@ -808,9 +765,7 @@ mod tests {
                     ]
                 }
             });
-            let request = Request::post(&server_url)
-                .body(Body::from(body.to_string()))
-                .unwrap();
+            let request = Request::post(&server_url).body(Body::from(body.to_string())).unwrap();
 
             let client = new_http_client().await;
             let response = client.request(request).await?;
@@ -838,10 +793,7 @@ mod tests {
     async fn test_no_configured_responses() -> Result<(), Error> {
         let server = OmahaServer::start_and_detach(
             Arc::new(Mutex::new(
-                OmahaServerBuilder::default()
-                    .responses_by_appid([])
-                    .build()
-                    .unwrap(),
+                OmahaServerBuilder::default().responses_by_appid([]).build().unwrap(),
             )),
             None,
         )
@@ -860,9 +812,7 @@ mod tests {
                 ]
             }
         });
-        let request = Request::post(&server)
-            .body(Body::from(body.to_string()))
-            .unwrap();
+        let request = Request::post(&server).body(Body::from(body.to_string())).unwrap();
         let response = client.request(request).await?;
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())
@@ -964,9 +914,7 @@ mod tests {
         });
         // no CUP, but we set .require_cup(true) above, so mock-omaha-server will
         // panic. (See should_panic above.)
-        let request = Request::post(&server_url)
-            .body(Body::from(body.to_string()))
-            .unwrap();
+        let request = Request::post(&server_url).body(Body::from(body.to_string())).unwrap();
         let _response = client.request(request).await.unwrap();
     }
 }

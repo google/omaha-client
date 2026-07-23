@@ -101,10 +101,8 @@ fn basic_serialization_test_app_with_extras() {
         update_check: Some(UpdateCheck::default()),
         ..App::default()
     };
-    app.extra_fields
-        .insert("key1".to_string(), "value1".to_string());
-    app.extra_fields
-        .insert("key2".to_string(), "value2".to_string());
+    app.extra_fields.insert("key1".to_string(), "value1".to_string());
+    app.extra_fields.insert("key2".to_string(), "value2".to_string());
     let request = RequestWrapper {
         request: Request {
             protocol_version: "3.0".to_string(),
@@ -162,8 +160,7 @@ fn basic_serialization_test_app_with_extras_will_overwrite_protocol_fields() {
     };
 
     // attempt to overwrite the version via "extra_fields", do not do this.
-    app.extra_fields
-        .insert("version".to_string(), "5.6.7.8".to_string());
+    app.extra_fields.insert("version".to_string(), "5.6.7.8".to_string());
 
     let request = RequestWrapper {
         request: Request {
@@ -235,10 +232,7 @@ fn basic_ping_serialization_test() {
             apps: vec![App {
                 id: "{00000000-0000-0000-0000-000000000001}".to_string(),
                 version: "1.2.3.4".to_string(),
-                ping: Some(Ping {
-                    date_last_active: Some(2000),
-                    date_last_roll_call: Some(2001),
-                }),
+                ping: Some(Ping { date_last_active: Some(2000), date_last_roll_call: Some(2001) }),
                 ..App::default()
             }],
         },
@@ -475,10 +469,7 @@ fn all_fields_serialization_test() {
                     name: Some("Production".to_string()),
                 }),
                 update_check: Some(UpdateCheck::disabled()),
-                ping: Some(Ping {
-                    date_last_active: Some(300),
-                    date_last_roll_call: Some(45),
-                }),
+                ping: Some(Ping { date_last_active: Some(300), date_last_roll_call: Some(45) }),
                 events: vec![
                     Event {
                         event_type: EventType::InstallComplete,

@@ -205,10 +205,7 @@ impl From<oneshot::Canceled> for StateMachineGone {
 }
 
 enum ControlRequest {
-    StartUpdateCheck {
-        options: CheckOptions,
-        responder: oneshot::Sender<StartUpdateCheckResponse>,
-    },
+    StartUpdateCheck { options: CheckOptions, responder: oneshot::Sender<StartUpdateCheckResponse> },
 }
 
 /// Responses to a request to start an update check now.
@@ -233,9 +230,7 @@ impl ControlHandle {
         options: CheckOptions,
     ) -> Result<StartUpdateCheckResponse, StateMachineGone> {
         let (responder, receive_response) = oneshot::channel();
-        self.0
-            .send(ControlRequest::StartUpdateCheck { options, responder })
-            .await?;
+        self.0.send(ControlRequest::StartUpdateCheck { options, responder }).await?;
         Ok(receive_response.await?)
     }
 }
@@ -271,8 +266,7 @@ where
             .await;
         self.context.schedule.next_update_time = Some(timing);
 
-        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule))
-            .await;
+        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule)).await;
         info!("Calculated check timing: {}", timing);
         timing
     }
@@ -308,10 +302,7 @@ where
         {
             let app_set = self.app_set.lock().await;
             if !app_set.all_valid() {
-                error!(
-                    "App set not valid, not starting state machine: {:#?}",
-                    app_set.get_apps()
-                );
+                error!("App set not valid, not starting state machine: {:#?}", app_set.get_apps());
                 return;
             }
         }
@@ -351,10 +342,7 @@ where
                         storage.commit_or_log().await;
                     }
                     Err(e) => {
-                        warn!(
-                            "Couldn't report wait for reboot duration: {:#}, will try again",
-                            e
-                        );
+                        warn!("Couldn't report wait for reboot duration: {:#}, will try again", e);
                     }
                 }
             }
@@ -375,10 +363,7 @@ where
 
             let reboot_after_update = {
                 let apps = self.app_set.lock().await.get_apps();
-                info!(
-                    "Checking to see if an update check is allowed at this time for {:?}",
-                    apps
-                );
+                info!("Checking to see if an update check is allowed at this time for {:?}", apps);
                 let decision = self
                     .policy_engine
                     .update_check_allowed(
@@ -437,8 +422,7 @@ where
 
             if let RebootAfterUpdate::Needed(install_result) = reboot_after_update {
                 Self::yield_state(State::WaitingForReboot, &mut co).await;
-                self.wait_for_reboot(options, &mut control, install_result, &mut co)
-                    .await;
+                self.wait_for_reboot(options, &mut control, install_result, &mut co).await;
             }
 
             Self::yield_state(State::Idle, &mut co).await;
@@ -452,11 +436,7 @@ where
         install_result: IN::InstallResult,
         co: &mut async_generator::Yield<StateMachineEvent>,
     ) {
-        if !self
-            .policy_engine
-            .reboot_allowed(&options, &install_result)
-            .await
-        {
+        if !self.policy_engine.reboot_allowed(&options, &install_result).await {
             let wait_to_see_if_reboot_allowed =
                 self.timer.wait_for(CHECK_REBOOT_ALLOWED_INTERVAL).fuse();
             futures::pin_mut!(wait_to_see_if_reboot_allowed);
@@ -552,9 +532,8 @@ where
                 )
             })?;
 
-        let waited_for_reboot_duration = update_finish_time_to_now
-            .checked_sub(state_machine_start_to_now)
-            .ok_or_else(|| {
+        let waited_for_reboot_duration =
+            update_finish_time_to_now.checked_sub(state_machine_start_to_now).ok_or_else(|| {
                 anyhow!(
                     "Can't report waiting for reboot duration, update finish time to now smaller \
                     than state machine start to now. Update finish time to now: {:?}, state \
@@ -564,10 +543,7 @@ where
                 )
             })?;
 
-        info!(
-            "Waited {} seconds for reboot.",
-            waited_for_reboot_duration.as_secs()
-        );
+        info!("Waited {} seconds for reboot.", waited_for_reboot_duration.as_secs());
         self.report_metrics(Metrics::WaitedForRebootDuration(waited_for_reboot_duration));
         Ok(())
     }
@@ -644,10 +620,7 @@ where
                 // report metrics.
                 self.report_attempts_to_successful_check(true).await;
 
-                self.app_set
-                    .lock()
-                    .await
-                    .update_from_omaha(&result.app_responses);
+                self.app_set.lock().await.update_from_omaha(&result.app_responses);
 
                 // Only report |attempts_to_successful_install| if we get an error trying to
                 // install, or we succeed to install an update without error.
@@ -686,14 +659,9 @@ where
             }
         };
 
-        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule))
-            .await;
-        co.yield_(StateMachineEvent::ProtocolStateChange(
-            self.context.state.clone(),
-        ))
-        .await;
-        co.yield_(StateMachineEvent::UpdateCheckResult(result))
-            .await;
+        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule)).await;
+        co.yield_(StateMachineEvent::ProtocolStateChange(self.context.state.clone())).await;
+        co.yield_(StateMachineEvent::UpdateCheckResult(result)).await;
 
         self.persist_data().await;
 
@@ -717,11 +685,7 @@ where
     async fn report_attempts_to_successful_install(&mut self, success: bool) {
         let storage_ref = self.storage_ref.clone();
         let mut storage = storage_ref.lock().await;
-        let attempts = storage
-            .get_int(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS)
-            .await
-            .unwrap_or(0)
-            + 1;
+        let attempts = storage.get_int(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS).await.unwrap_or(0) + 1;
 
         self.report_metrics(Metrics::AttemptsToSuccessfulInstall {
             count: attempts as u64,
@@ -729,17 +693,10 @@ where
         });
 
         if success {
-            storage
-                .remove_or_log(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS)
-                .await;
-        } else if let Err(e) = storage
-            .set_int(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS, attempts)
-            .await
+            storage.remove_or_log(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS).await;
+        } else if let Err(e) = storage.set_int(CONSECUTIVE_FAILED_INSTALL_ATTEMPTS, attempts).await
         {
-            error!(
-                "Unable to persist {}: {}",
-                CONSECUTIVE_FAILED_INSTALL_ATTEMPTS, e
-            );
+            error!("Unable to persist {}: {}", CONSECUTIVE_FAILED_INSTALL_ATTEMPTS, e);
         }
     }
 
@@ -782,9 +739,7 @@ where
             // Mark the start time for the request to omaha.
             let omaha_check_start_time = self.time_source.now_in_monotonic();
             request_builder = request_builder.request_id(GUID::new());
-            let result = self
-                .do_omaha_request_and_update_context(&request_builder, co)
-                .await;
+            let result = self.do_omaha_request_and_update_context(&request_builder, co).await;
 
             // Report the response time of the omaha request.
             {
@@ -822,18 +777,12 @@ where
                     break Err(UpdateCheckError::OmahaRequest(e.into()));
                 }
                 Err(OmahaRequestError::CupDecoration(e)) => {
-                    error!(
-                        "Unable to decorate HTTP request with CUPv2 parameters! {:?}",
-                        e
-                    );
+                    error!("Unable to decorate HTTP request with CUPv2 parameters! {:?}", e);
                     Self::yield_state(State::ErrorCheckingForUpdate, co).await;
                     break Err(UpdateCheckError::OmahaRequest(e.into()));
                 }
                 Err(OmahaRequestError::CupValidation(e)) => {
-                    error!(
-                        "Unable to validate HTTP response with CUPv2 parameters! {:?}",
-                        e
-                    );
+                    error!("Unable to validate HTTP response with CUPv2 parameters! {:?}", e);
                     Self::yield_state(State::ErrorCheckingForUpdate, co).await;
                     break Err(UpdateCheckError::OmahaRequest(e.into()));
                 }
@@ -865,9 +814,7 @@ where
             let backoff_time_secs = 1 << (omaha_request_attempt - 1);
             let backoff_time = randomize(backoff_time_secs * 1000, 1000);
             info!("Waiting {} ms before retrying...", backoff_time);
-            self.timer
-                .wait_for(Duration::from_millis(backoff_time))
-                .await;
+            self.timer.wait_for(Duration::from_millis(backoff_time)).await;
 
             omaha_request_attempt += 1;
         };
@@ -900,8 +847,7 @@ where
 
         info!("result: {:?}", response);
 
-        co.yield_(StateMachineEvent::OmahaServerResponse(response.clone()))
-            .await;
+        co.yield_(StateMachineEvent::OmahaServerResponse(response.clone())).await;
 
         let statuses = Self::get_app_update_statuses(&response);
         for (app_id, status) in &statuses {
@@ -913,13 +859,7 @@ where
             .apps
             .iter()
             .filter(|app| {
-                matches!(
-                    app.update_check,
-                    Some(UpdateCheck {
-                        status: OmahaStatus::Ok,
-                        ..
-                    })
-                )
+                matches!(app.update_check, Some(UpdateCheck { status: OmahaStatus::Ok, .. }))
             })
             .collect();
 
@@ -1036,35 +976,27 @@ where
 
             let install_plan_id = install_plan.id();
             let update_start_time = self.time_source.now_in_walltime();
-            let update_first_seen_time = self
-                .record_update_first_seen_time(&install_plan_id, update_start_time)
-                .await;
+            let update_first_seen_time =
+                self.record_update_first_seen_time(&install_plan_id, update_start_time).await;
 
             let (send, mut recv) = mpsc::channel(0);
             let observer = StateMachineProgressObserver(send);
             let perform_install = async {
-                let result = self
-                    .installer
-                    .perform_install(&install_plan, Some(&observer))
-                    .await;
+                let result = self.installer.perform_install(&install_plan, Some(&observer)).await;
                 // Drop observer so that we can stop waiting for the next progress.
                 drop(observer);
                 result
             };
             let yield_progress = async {
                 while let Some(progress) = recv.next().await {
-                    co.yield_(StateMachineEvent::InstallProgressChange(progress))
-                        .await;
+                    co.yield_(StateMachineEvent::InstallProgressChange(progress)).await;
                 }
             };
 
             let ((install_result, mut app_install_results), ()) =
                 future::join(perform_install, yield_progress).await;
             let no_apps_failed = app_install_results.iter().all(|result| {
-                matches!(
-                    result,
-                    AppInstallResult::Installed | AppInstallResult::Deferred
-                )
+                matches!(result, AppInstallResult::Installed | AppInstallResult::Deferred)
             });
             let update_finish_time = self.time_source.now_in_walltime();
             let install_duration = match update_finish_time.duration_since(update_start_time) {
@@ -1121,13 +1053,9 @@ where
                     }
                 }
             }
-            request_builder = request_builder
-                .session_id(session_id.clone())
-                .request_id(GUID::new());
-            if let Err(e) = self
-                .do_omaha_request_and_update_context(&request_builder, co)
-                .await
-            {
+            request_builder =
+                request_builder.session_id(session_id.clone()).request_id(GUID::new());
+            if let Err(e) = self.do_omaha_request_and_update_context(&request_builder, co).await {
                 for event in events {
                     self.report_metrics(Metrics::OmahaEventLost(event));
                 }
@@ -1160,17 +1088,18 @@ where
                     cohort: app.cohort,
                     user_counting: daystart.clone().into(),
                     result: match app.update_check {
-                        Some(UpdateCheck {
-                            status: OmahaStatus::Ok,
-                            ..
-                        }) => match app_install_results.remove(0) {
-                            AppInstallResult::Installed => update_check::Action::Updated,
-                            AppInstallResult::Deferred => update_check::Action::DeferredByPolicy,
-                            AppInstallResult::Failed(e) => {
-                                errors.push(e);
-                                update_check::Action::InstallPlanExecutionError
+                        Some(UpdateCheck { status: OmahaStatus::Ok, .. }) => {
+                            match app_install_results.remove(0) {
+                                AppInstallResult::Installed => update_check::Action::Updated,
+                                AppInstallResult::Deferred => {
+                                    update_check::Action::DeferredByPolicy
+                                }
+                                AppInstallResult::Failed(e) => {
+                                    errors.push(e);
+                                    update_check::Action::InstallPlanExecutionError
+                                }
                             }
-                        },
+                        }
                         _ => update_check::Action::NoUpdate,
                     },
                 })
@@ -1178,8 +1107,7 @@ where
 
             if !errors.is_empty() {
                 for e in errors {
-                    co.yield_(StateMachineEvent::InstallerError(Some(Box::new(e))))
-                        .await;
+                    co.yield_(StateMachineEvent::InstallerError(Some(Box::new(e)))).await;
                 }
                 Self::yield_state(State::InstallationError, co).await;
 
@@ -1197,10 +1125,7 @@ where
             }
             {
                 let mut storage = self.storage_ref.lock().await;
-                if let Err(e) = storage
-                    .set_time(UPDATE_FINISH_TIME, update_finish_time)
-                    .await
-                {
+                if let Err(e) = storage.set_time(UPDATE_FINISH_TIME, update_finish_time).await {
                     error!("Unable to persist {}: {}", UPDATE_FINISH_TIME, e);
                 }
                 let app_set = self.app_set.lock().await;
@@ -1224,10 +1149,7 @@ where
                 RebootAfterUpdate::NotNeeded
             };
 
-            Ok((
-                update_check::Response { app_responses },
-                reboot_after_update,
-            ))
+            Ok((update_check::Response { app_responses }, reboot_after_update))
         }
     }
 
@@ -1258,13 +1180,8 @@ where
                 request_builder = request_builder.add_event(app, event);
             }
         }
-        request_builder = request_builder
-            .session_id(session_id.clone())
-            .request_id(GUID::new());
-        if let Err(e) = self
-            .do_omaha_request_and_update_context(&request_builder, co)
-            .await
-        {
+        request_builder = request_builder.session_id(session_id.clone()).request_id(GUID::new());
+        if let Err(e) = self.do_omaha_request_and_update_context(&request_builder, co).await {
             self.report_metrics(Metrics::OmahaEventLost(event));
             warn!("Unable to report event to Omaha: {:?}", e);
         }
@@ -1284,22 +1201,18 @@ where
         for app in &apps {
             request_builder = request_builder.add_ping(app);
         }
-        request_builder = request_builder
-            .session_id(GUID::new())
-            .request_id(GUID::new());
+        request_builder = request_builder.session_id(GUID::new()).request_id(GUID::new());
 
-        let (_parts, data, _request_metadata, _signature) = match self
-            .do_omaha_request_and_update_context(&request_builder, co)
-            .await
-        {
-            Ok(res) => res,
-            Err(e) => {
-                error!("Ping Omaha failed: {:#}", anyhow!(e));
-                self.context.state.consecutive_failed_update_checks += 1;
-                self.persist_data().await;
-                return;
-            }
-        };
+        let (_parts, data, _request_metadata, _signature) =
+            match self.do_omaha_request_and_update_context(&request_builder, co).await {
+                Ok(res) => res,
+                Err(e) => {
+                    error!("Ping Omaha failed: {:#}", anyhow!(e));
+                    self.context.state.consecutive_failed_update_checks += 1;
+                    self.persist_data().await;
+                    return;
+                }
+            };
 
         let response = match Self::parse_omaha_response(&data) {
             Ok(res) => res,
@@ -1316,8 +1229,7 @@ where
         // Even though this is a ping, we should still update the last_update_time for
         // policy to compute the next ping time.
         self.context.schedule.last_update_time = Some(self.time_source.now().into());
-        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule))
-            .await;
+        co.yield_(StateMachineEvent::ScheduleChange(self.context.schedule)).await;
 
         let app_responses = Self::make_app_responses(response, update_check::Action::NoUpdate);
         self.app_set.lock().await.update_from_omaha(&app_responses);
@@ -1341,15 +1253,8 @@ where
         &'a mut self,
         builder: &RequestBuilder<'a>,
         co: &mut async_generator::Yield<StateMachineEvent>,
-    ) -> Result<
-        (
-            Parts,
-            Vec<u8>,
-            Option<RequestMetadata>,
-            Option<DerSignature>,
-        ),
-        OmahaRequestError,
-    > {
+    ) -> Result<(Parts, Vec<u8>, Option<RequestMetadata>, Option<DerSignature>), OmahaRequestError>
+    {
         let (request, request_metadata) = builder.build(self.cup_handler.as_ref())?;
         let response = Self::make_request(&mut self.http, request).await?;
 
@@ -1389,10 +1294,7 @@ where
         });
         if self.context.state.server_dictated_poll_interval != server_dictated_poll_interval {
             self.context.state.server_dictated_poll_interval = server_dictated_poll_interval;
-            co.yield_(StateMachineEvent::ProtocolStateChange(
-                self.context.state.clone(),
-            ))
-            .await;
+            co.yield_(StateMachineEvent::ProtocolStateChange(self.context.state.clone())).await;
             let mut storage = self.storage_ref.lock().await;
             self.context.persist(&mut *storage).await;
             storage.commit_or_log().await;
@@ -1436,11 +1338,7 @@ where
         response
             .apps
             .iter()
-            .filter_map(|app| {
-                app.update_check
-                    .as_ref()
-                    .map(|u| (app.id.as_str(), &u.status))
-            })
+            .filter_map(|app| app.update_check.as_ref().map(|u| (app.id.as_str(), &u.status)))
             .collect()
     }
 
@@ -1473,9 +1371,7 @@ where
     ) -> Result<(update_check::Response, RebootAfterUpdate<IN::InstallResult>), UpdateCheckError>
     {
         Ok((
-            update_check::Response {
-                app_responses: Self::make_app_responses(response, action),
-            },
+            update_check::Response { app_responses: Self::make_app_responses(response, action) },
             RebootAfterUpdate::NotNeeded,
         ))
     }
@@ -1501,10 +1397,7 @@ where
         if let Some(previous_id) = previous_id
             && previous_id == install_plan_id
         {
-            return storage
-                .get_time(UPDATE_FIRST_SEEN_TIME)
-                .await
-                .unwrap_or(now);
+            return storage.get_time(UPDATE_FIRST_SEEN_TIME).await.unwrap_or(now);
         }
         // Update INSTALL_PLAN_ID and UPDATE_FIRST_SEEN_TIME for new update.
         if let Err(e) = storage.set_string(INSTALL_PLAN_ID, install_plan_id).await {
@@ -1549,8 +1442,7 @@ where
         let apps = self.app_set.lock().await.get_apps();
 
         async_generator::generate(move |mut co| async move {
-            self.perform_update_check(request_params, apps, &mut co)
-                .await
+            self.perform_update_check(request_params, apps, &mut co).await
         })
         .into_complete()
         .await
@@ -1698,15 +1590,9 @@ mod tests {
                 .oneshot(RequestParams::default())
                 .await
                 .unwrap();
-            assert_eq!(
-                "{00000000-0000-0000-0000-000000000001}",
-                response.app_responses[0].app_id
-            );
+            assert_eq!("{00000000-0000-0000-0000-000000000001}", response.app_responses[0].app_id);
             assert_eq!(Some("1".into()), response.app_responses[0].cohort.id);
-            assert_eq!(
-                Some("stable-channel".into()),
-                response.app_responses[0].cohort.name
-            );
+            assert_eq!(Some("stable-channel".into()), response.app_responses[0].cohort.name);
             assert_eq!(None, response.app_responses[0].cohort.hint);
 
             assert_matches!(reboot_after_update, RebootAfterUpdate::NotNeeded);
@@ -1737,15 +1623,9 @@ mod tests {
                 .oneshot(RequestParams::default())
                 .await
                 .unwrap();
-            assert_eq!(
-                "{00000000-0000-0000-0000-000000000001}",
-                response.app_responses[0].app_id
-            );
+            assert_eq!("{00000000-0000-0000-0000-000000000001}", response.app_responses[0].app_id);
             assert_eq!(Some("1".into()), response.app_responses[0].cohort.id);
-            assert_eq!(
-                Some("stable-channel".into()),
-                response.app_responses[0].cohort.name
-            );
+            assert_eq!(Some("stable-channel".into()), response.app_responses[0].cohort.name);
             assert_eq!(None, response.app_responses[0].cohort.hint);
 
             assert_matches!(reboot_after_update, RebootAfterUpdate::Needed(()));
@@ -1846,14 +1726,9 @@ mod tests {
                 .build()
                 .await;
 
-            let (response, reboot_after_update) = state_machine
-                .oneshot(RequestParams::default())
-                .await
-                .unwrap();
-            assert_eq!(
-                Action::InstallPlanExecutionError,
-                response.app_responses[0].result
-            );
+            let (response, reboot_after_update) =
+                state_machine.oneshot(RequestParams::default()).await.unwrap();
+            assert_eq!(Action::InstallPlanExecutionError, response.app_responses[0].result);
             assert_matches!(reboot_after_update, RebootAfterUpdate::NotNeeded);
 
             let request_params = RequestParams::default();
@@ -1932,28 +1807,20 @@ mod tests {
             let mut state_machine = StateMachineBuilder::new_stub()
                 .app_set(Rc::clone(&app_set))
                 .http(http)
-                .installer(BlockingInstaller {
-                    on_install: send_install,
-                    on_reboot: None,
-                })
+                .installer(BlockingInstaller { on_install: send_install, on_reboot: None })
                 .build()
                 .await;
 
             let recv_install_fut = async move {
                 let unblock_install = recv_install.next().await.unwrap();
                 unblock_install
-                    .send(vec![
-                        AppInstallResult::Deferred,
-                        AppInstallResult::Installed,
-                    ])
+                    .send(vec![AppInstallResult::Deferred, AppInstallResult::Installed])
                     .unwrap();
             };
 
-            let (oneshot_result, ()) = future::join(
-                state_machine.oneshot(RequestParams::default()),
-                recv_install_fut,
-            )
-            .await;
+            let (oneshot_result, ()) =
+                future::join(state_machine.oneshot(RequestParams::default()), recv_install_fut)
+                    .await;
             let (response, reboot_after_update) = oneshot_result.unwrap();
 
             assert_eq!("appid_3", response.app_responses[0].app_id);
@@ -2047,10 +1914,8 @@ mod tests {
                 .build()
                 .await;
 
-            let (response, reboot_after_update) = state_machine
-                .oneshot(RequestParams::default())
-                .await
-                .unwrap();
+            let (response, reboot_after_update) =
+                state_machine.oneshot(RequestParams::default()).await.unwrap();
             assert_eq!(Action::DeferredByPolicy, response.app_responses[0].result);
             assert_matches!(reboot_after_update, RebootAfterUpdate::NotNeeded);
 
@@ -2087,10 +1952,8 @@ mod tests {
                 .build()
                 .await;
 
-            let (response, reboot_after_update) = state_machine
-                .oneshot(RequestParams::default())
-                .await
-                .unwrap();
+            let (response, reboot_after_update) =
+                state_machine.oneshot(RequestParams::default()).await.unwrap();
             assert_eq!(Action::DeniedByPolicy, response.app_responses[0].result);
             assert_matches!(reboot_after_update, RebootAfterUpdate::NotNeeded);
 
@@ -2122,23 +1985,15 @@ mod tests {
         };
 
         let (_ctl, state_machine) = pool.run_until(
-            StateMachineBuilder::new_stub()
-                .policy_engine(policy_engine)
-                .timer(timer)
-                .start(),
+            StateMachineBuilder::new_stub().policy_engine(policy_engine).timer(timer).start(),
         );
 
-        pool.spawner()
-            .spawn_local(state_machine.map(|_| ()).collect())
-            .unwrap();
+        pool.spawner().spawn_local(state_machine.map(|_| ()).collect()).unwrap();
 
         // With otherwise stub implementations, the pool stalls when a timer is awaited.  Dropping
         // the state machine will panic if any timer durations were not used.
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
     }
 
     #[test]
@@ -2166,11 +2021,8 @@ mod tests {
             http.add_response(HttpResponse::new(response));
             let apps = make_test_app_set();
 
-            let mut state_machine = StateMachineBuilder::new_stub()
-                .http(http)
-                .app_set(apps.clone())
-                .build()
-                .await;
+            let mut state_machine =
+                StateMachineBuilder::new_stub().http(http).app_set(apps.clone()).build().await;
 
             // Run it the first time.
             state_machine.run_once().await;
@@ -2179,10 +2031,7 @@ mod tests {
             assert_eq!(Some("1".to_string()), apps[0].cohort.id);
             assert_eq!(None, apps[0].cohort.hint);
             assert_eq!(Some("stable-channel".to_string()), apps[0].cohort.name);
-            assert_eq!(
-                UserCounting::ClientRegulatedByDate(Some(1234567)),
-                apps[0].user_counting
-            );
+            assert_eq!(UserCounting::ClientRegulatedByDate(Some(1234567)), apps[0].user_counting);
 
             // Run it the second time.
             state_machine.run_once().await;
@@ -2301,10 +2150,8 @@ mod tests {
                 .collect::<Vec<ProtocolState>>()
                 .await;
 
-            let expected_protocol_state = ProtocolState {
-                consecutive_failed_update_checks: 1,
-                ..ProtocolState::default()
-            };
+            let expected_protocol_state =
+                ProtocolState { consecutive_failed_update_checks: 1, ..ProtocolState::default() };
 
             assert_eq!(actual_protocol_states, vec![expected_protocol_state]);
         });
@@ -2502,10 +2349,7 @@ mod tests {
             assert!(
                 metrics_reporter
                     .metrics
-                    .contains(&Metrics::RequestsPerCheck {
-                        count: 1,
-                        successful: true
-                    })
+                    .contains(&Metrics::RequestsPerCheck { count: 1, successful: true })
             );
         });
     }
@@ -2529,14 +2373,10 @@ mod tests {
                 .await;
 
             assert!(!metrics_reporter.metrics.is_empty());
-            assert!(
-                metrics_reporter
-                    .metrics
-                    .contains(&Metrics::RequestsPerCheck {
-                        count: MAX_OMAHA_REQUEST_ATTEMPTS,
-                        successful: true
-                    })
-            );
+            assert!(metrics_reporter.metrics.contains(&Metrics::RequestsPerCheck {
+                count: MAX_OMAHA_REQUEST_ATTEMPTS,
+                successful: true
+            }));
         });
     }
 
@@ -2560,14 +2400,10 @@ mod tests {
                 .await;
 
             assert!(!metrics_reporter.metrics.is_empty());
-            assert!(
-                metrics_reporter
-                    .metrics
-                    .contains(&Metrics::RequestsPerCheck {
-                        count: MAX_OMAHA_REQUEST_ATTEMPTS,
-                        successful: false
-                    })
-            );
+            assert!(metrics_reporter.metrics.contains(&Metrics::RequestsPerCheck {
+                count: MAX_OMAHA_REQUEST_ATTEMPTS,
+                successful: false
+            }));
         });
     }
 
@@ -2597,9 +2433,7 @@ mod tests {
 
             assert_matches!(
                 response,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::HttpStatus(_)
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::HttpStatus(_)))
             );
         });
     }
@@ -2618,9 +2452,7 @@ mod tests {
             assert!(
                 metrics_reporter
                     .metrics
-                    .contains(&Metrics::UpdateCheckFailureReason(
-                        UpdateCheckFailureReason::Omaha
-                    ))
+                    .contains(&Metrics::UpdateCheckFailureReason(UpdateCheckFailureReason::Omaha))
             );
         });
     }
@@ -2638,11 +2470,9 @@ mod tests {
             state_machine.run_once().await;
 
             assert!(
-                metrics_reporter
-                    .metrics
-                    .contains(&Metrics::UpdateCheckFailureReason(
-                        UpdateCheckFailureReason::Network
-                    ))
+                metrics_reporter.metrics.contains(&Metrics::UpdateCheckFailureReason(
+                    UpdateCheckFailureReason::Network
+                ))
             );
         });
     }
@@ -2681,10 +2511,7 @@ mod tests {
                 .storage(Rc::clone(&storage))
                 .build()
                 .await;
-            state_machine
-                .oneshot(RequestParams::default())
-                .await
-                .unwrap();
+            state_machine.oneshot(RequestParams::default()).await.unwrap();
 
             assert_eq!(
                 state_machine.context.state.server_dictated_poll_interval,
@@ -2692,10 +2519,7 @@ mod tests {
             );
 
             let storage = storage.lock().await;
-            assert_eq!(
-                storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await,
-                Some(1234000000)
-            );
+            assert_eq!(storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await, Some(1234000000));
             assert!(storage.committed());
         });
     }
@@ -2718,9 +2542,7 @@ mod tests {
                 .await;
             assert_matches!(
                 state_machine.oneshot(RequestParams::default()).await,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::HttpStatus(_)
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::HttpStatus(_)))
             );
 
             assert_eq!(
@@ -2729,10 +2551,7 @@ mod tests {
             );
 
             let storage = storage.lock().await;
-            assert_eq!(
-                storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await,
-                Some(1234000000)
-            );
+            assert_eq!(storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await, Some(1234000000));
             assert!(storage.committed());
         });
     }
@@ -2755,9 +2574,7 @@ mod tests {
                 .await;
             assert_matches!(
                 state_machine.oneshot(RequestParams::default()).await,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::HttpStatus(_)
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::HttpStatus(_)))
             );
 
             assert_eq!(
@@ -2766,10 +2583,7 @@ mod tests {
             );
 
             let storage = storage.lock().await;
-            assert_eq!(
-                storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await,
-                Some(86400000000)
-            );
+            assert_eq!(storage.get_int(SERVER_DICTATED_POLL_INTERVAL).await, Some(86400000000));
             assert!(storage.committed());
         });
     }
@@ -2780,9 +2594,7 @@ mod tests {
             let mut http = MockHttpRequest::empty();
             http.add_error(http_request::mock_errors::make_transport_error());
             let mut storage = MemStorage::new();
-            let _ = storage
-                .set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000)
-                .await;
+            let _ = storage.set_int(SERVER_DICTATED_POLL_INTERVAL, 1234000000).await;
             let _ = storage.commit().await;
             let storage = Rc::new(Mutex::new(storage));
 
@@ -2796,9 +2608,7 @@ mod tests {
             // HttpStatus error.
             assert_matches!(
                 state_machine.oneshot(RequestParams::default()).await,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::HttpTransport(_)
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::HttpTransport(_)))
             );
 
             assert_eq!(
@@ -2837,10 +2647,7 @@ mod tests {
             let mut mock_time = MockTimeSource::new_from_now();
             mock_time.truncate_submicrosecond_walltime();
             let last_update_time = mock_time.now_in_walltime() - Duration::from_secs(999);
-            storage
-                .set_time(LAST_UPDATE_TIME, last_update_time)
-                .await
-                .unwrap();
+            storage.set_time(LAST_UPDATE_TIME, last_update_time).await.unwrap();
 
             let state_machine = StateMachineBuilder::new_stub()
                 .policy_engine(StubPolicyEngine::new(&mock_time))
@@ -2859,15 +2666,10 @@ mod tests {
     fn test_load_server_dictated_poll_interval() {
         block_on(async {
             let mut storage = MemStorage::new();
-            storage
-                .set_int(SERVER_DICTATED_POLL_INTERVAL, 56789)
-                .await
-                .unwrap();
+            storage.set_int(SERVER_DICTATED_POLL_INTERVAL, 56789).await.unwrap();
 
-            let state_machine = StateMachineBuilder::new_stub()
-                .storage(Rc::new(Mutex::new(storage)))
-                .build()
-                .await;
+            let state_machine =
+                StateMachineBuilder::new_stub().storage(Rc::new(Mutex::new(storage))).build().await;
 
             assert_eq!(
                 Some(Duration::from_micros(56789)),
@@ -2908,10 +2710,7 @@ mod tests {
 
             let apps = app_set.lock().await.get_apps();
             assert_eq!(persisted_app.cohort, apps[0].cohort);
-            assert_eq!(
-                UserCounting::ClientRegulatedByDate(Some(22222)),
-                apps[0].user_counting
-            );
+            assert_eq!(UserCounting::ClientRegulatedByDate(Some(22222)), apps[0].user_counting);
         });
     }
 
@@ -2925,9 +2724,7 @@ mod tests {
                 .build()
                 .await;
 
-            state_machine
-                .report_check_interval(InstallSource::ScheduledTask)
-                .await;
+            state_machine.report_check_interval(InstallSource::ScheduledTask).await;
             // No metrics should be reported because no LAST_UPDATE_TIME in storage.
             assert!(state_machine.metrics_reporter.metrics.is_empty());
 
@@ -2935,9 +2732,7 @@ mod tests {
             let interval = Duration::from_micros(999999);
             mock_time.advance(interval);
 
-            state_machine
-                .report_check_interval(InstallSource::ScheduledTask)
-                .await;
+            state_machine.report_check_interval(InstallSource::ScheduledTask).await;
 
             assert_eq!(
                 state_machine.metrics_reporter.metrics,
@@ -2966,23 +2761,17 @@ mod tests {
             let initial_time = mock_time.now_in_walltime() - initial_duration;
             state_machine.context.schedule.last_update_check_time =
                 Some(PartialComplexTime::Wall(initial_time));
-            state_machine
-                .report_check_interval(InstallSource::ScheduledTask)
-                .await;
+            state_machine.report_check_interval(InstallSource::ScheduledTask).await;
 
             // Advance one more time, and this time we should see a monotonic delta.
             let interval = Duration::from_micros(999999);
             mock_time.advance(interval);
-            state_machine
-                .report_check_interval(InstallSource::ScheduledTask)
-                .await;
+            state_machine.report_check_interval(InstallSource::ScheduledTask).await;
 
             // One final time, to demonstrate monotonic time edges to
             // monotonic time.
             mock_time.advance(interval);
-            state_machine
-                .report_check_interval(InstallSource::ScheduledTask)
-                .await;
+            state_machine.report_check_interval(InstallSource::ScheduledTask).await;
             assert_eq!(
                 state_machine.metrics_reporter.metrics,
                 vec![
@@ -3018,10 +2807,7 @@ mod tests {
     }
     impl TestInstaller {
         fn builder(mock_time: MockTimeSource) -> TestInstallerBuilder {
-            TestInstallerBuilder {
-                install_fails: 0,
-                mock_time,
-            }
+            TestInstallerBuilder { install_fails: 0, mock_time }
         }
     }
     impl TestInstallerBuilder {
@@ -3051,11 +2837,8 @@ mod tests {
         ) -> LocalBoxFuture<'a, (Self::InstallResult, Vec<AppInstallResult<Self::Error>>)> {
             if self.install_fails > 0 {
                 self.install_fails -= 1;
-                future::ready((
-                    (),
-                    vec![AppInstallResult::Failed(StubInstallErrors::Failed)],
-                ))
-                .boxed()
+                future::ready(((), vec![AppInstallResult::Failed(StubInstallErrors::Failed)]))
+                    .boxed()
             } else {
                 self.mock_time.advance(INSTALL_DURATION);
                 async move {
@@ -3103,9 +2886,8 @@ mod tests {
 
             let first_seen_time = now - Duration::from_micros(1000);
 
-            let expected_duration_since_first_seen = update_completed_time
-                .wall_duration_since(first_seen_time)
-                .unwrap();
+            let expected_duration_since_first_seen =
+                update_completed_time.wall_duration_since(first_seen_time).unwrap();
 
             let mut state_machine = StateMachineBuilder::new_stub()
                 .http(http)
@@ -3119,10 +2901,7 @@ mod tests {
             {
                 let mut storage = storage.lock().await;
                 storage.set_string(INSTALL_PLAN_ID, "").await.unwrap();
-                storage
-                    .set_time(UPDATE_FIRST_SEEN_TIME, first_seen_time)
-                    .await
-                    .unwrap();
+                storage.set_time(UPDATE_FIRST_SEEN_TIME, first_seen_time).await.unwrap();
                 storage.commit().await.unwrap();
             }
 
@@ -3176,24 +2955,16 @@ mod tests {
     fn test_record_update_first_seen_time() {
         block_on(async {
             let storage = Rc::new(Mutex::new(MemStorage::new()));
-            let mut state_machine = StateMachineBuilder::new_stub()
-                .storage(Rc::clone(&storage))
-                .build()
-                .await;
+            let mut state_machine =
+                StateMachineBuilder::new_stub().storage(Rc::clone(&storage)).build().await;
 
             let mut mock_time = MockTimeSource::new_from_now();
             mock_time.truncate_submicrosecond_walltime();
             let now = mock_time.now_in_walltime();
-            assert_eq!(
-                state_machine.record_update_first_seen_time("id", now).await,
-                now
-            );
+            assert_eq!(state_machine.record_update_first_seen_time("id", now).await, now);
             {
                 let storage = storage.lock().await;
-                assert_eq!(
-                    storage.get_string(INSTALL_PLAN_ID).await,
-                    Some("id".to_string())
-                );
+                assert_eq!(storage.get_string(INSTALL_PLAN_ID).await, Some("id".to_string()));
                 assert_eq!(storage.get_time(UPDATE_FIRST_SEEN_TIME).await, Some(now));
                 assert_eq!(storage.len(), 2);
                 assert!(storage.committed());
@@ -3201,34 +2972,18 @@ mod tests {
 
             mock_time.advance(Duration::from_secs(1000));
             let now2 = mock_time.now_in_walltime();
-            assert_eq!(
-                state_machine
-                    .record_update_first_seen_time("id", now2)
-                    .await,
-                now
-            );
+            assert_eq!(state_machine.record_update_first_seen_time("id", now2).await, now);
             {
                 let storage = storage.lock().await;
-                assert_eq!(
-                    storage.get_string(INSTALL_PLAN_ID).await,
-                    Some("id".to_string())
-                );
+                assert_eq!(storage.get_string(INSTALL_PLAN_ID).await, Some("id".to_string()));
                 assert_eq!(storage.get_time(UPDATE_FIRST_SEEN_TIME).await, Some(now));
                 assert_eq!(storage.len(), 2);
                 assert!(storage.committed());
             }
-            assert_eq!(
-                state_machine
-                    .record_update_first_seen_time("id2", now2)
-                    .await,
-                now2
-            );
+            assert_eq!(state_machine.record_update_first_seen_time("id2", now2).await, now2);
             {
                 let storage = storage.lock().await;
-                assert_eq!(
-                    storage.get_string(INSTALL_PLAN_ID).await,
-                    Some("id2".to_string())
-                );
+                assert_eq!(storage.get_string(INSTALL_PLAN_ID).await, Some("id2".to_string()));
                 assert_eq!(storage.get_time(UPDATE_FIRST_SEEN_TIME).await, Some(now2));
                 assert_eq!(storage.len(), 2);
                 assert!(storage.committed());
@@ -3247,52 +3002,29 @@ mod tests {
                 .build()
                 .await;
 
-            state_machine
-                .report_attempts_to_successful_check(true)
-                .await;
+            state_machine.report_attempts_to_successful_check(true).await;
 
             // consecutive_failed_update_attempts should be zero (there were no previous failures)
             // but we should record an attempt in metrics
-            assert_eq!(
-                state_machine.context.state.consecutive_failed_update_checks,
-                0
-            );
+            assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 0);
             assert_eq!(
                 state_machine.metrics_reporter.metrics,
                 vec![Metrics::AttemptsToSuccessfulCheck(1)]
             );
 
-            state_machine
-                .report_attempts_to_successful_check(false)
-                .await;
-            assert_eq!(
-                state_machine.context.state.consecutive_failed_update_checks,
-                1
-            );
+            state_machine.report_attempts_to_successful_check(false).await;
+            assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 1);
 
-            state_machine
-                .report_attempts_to_successful_check(false)
-                .await;
-            assert_eq!(
-                state_machine.context.state.consecutive_failed_update_checks,
-                2
-            );
+            state_machine.report_attempts_to_successful_check(false).await;
+            assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 2);
 
             // consecutive_failed_update_attempts should be reset to zero on success
             // but we should record the previous number of failed attempts (2) + 1 in metrics
-            state_machine
-                .report_attempts_to_successful_check(true)
-                .await;
-            assert_eq!(
-                state_machine.context.state.consecutive_failed_update_checks,
-                0
-            );
+            state_machine.report_attempts_to_successful_check(true).await;
+            assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 0);
             assert_eq!(
                 state_machine.metrics_reporter.metrics,
-                vec![
-                    Metrics::AttemptsToSuccessfulCheck(1),
-                    Metrics::AttemptsToSuccessfulCheck(3)
-                ]
+                vec![Metrics::AttemptsToSuccessfulCheck(1), Metrics::AttemptsToSuccessfulCheck(3)]
             );
         });
     }
@@ -3333,43 +3065,25 @@ mod tests {
                 // Failed ping increases `consecutive_failed_update_checks`, adding the value from
                 // storage.
                 state_machine.ping_omaha(&mut co).await;
-                assert_eq!(
-                    state_machine.context.state.consecutive_failed_update_checks,
-                    2
-                );
+                assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 2);
                 {
                     let storage = storage.lock().await;
-                    assert_eq!(
-                        storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await,
-                        Some(2)
-                    );
+                    assert_eq!(storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await, Some(2));
                 }
 
                 state_machine.ping_omaha(&mut co).await;
-                assert_eq!(
-                    state_machine.context.state.consecutive_failed_update_checks,
-                    3
-                );
+                assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 3);
                 {
                     let storage = storage.lock().await;
-                    assert_eq!(
-                        storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await,
-                        Some(3)
-                    );
+                    assert_eq!(storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await, Some(3));
                 }
 
                 // Successful ping resets `consecutive_failed_update_checks`.
                 state_machine.ping_omaha(&mut co).await;
-                assert_eq!(
-                    state_machine.context.state.consecutive_failed_update_checks,
-                    0
-                );
+                assert_eq!(state_machine.context.state.consecutive_failed_update_checks, 0);
                 {
                     let storage = storage.lock().await;
-                    assert_eq!(
-                        storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await,
-                        None
-                    );
+                    assert_eq!(storage.get_int(CONSECUTIVE_FAILED_UPDATE_CHECKS).await, None);
                 }
             })
             .into_complete()
@@ -3438,11 +3152,7 @@ mod tests {
 
             let mut state_machine = StateMachineBuilder::new_stub()
                 .http(http)
-                .installer(
-                    TestInstaller::builder(mock_time.clone())
-                        .add_install_fail()
-                        .build(),
-                )
+                .installer(TestInstaller::builder(mock_time.clone()).add_install_fail().build())
                 .policy_engine(StubPolicyEngine::new(mock_time.clone()))
                 .metrics_reporter(MockMetricsReporter::new())
                 .storage(Rc::clone(&storage))
@@ -3543,15 +3253,10 @@ mod tests {
                 .start(),
         );
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         blocked_timer.unblock();
         pool.run_until_stalled();
 
@@ -3587,15 +3292,10 @@ mod tests {
                 .start(),
         );
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         blocked_timer.unblock();
         pool.run_until_stalled();
 
@@ -3622,9 +3322,7 @@ mod tests {
         let next_update_time = mock_time.now();
         let (timer, mut timers) = BlockingTimer::new();
 
-        let installer = TestInstaller::builder(mock_time.clone())
-            .add_install_fail()
-            .build();
+        let installer = TestInstaller::builder(mock_time.clone()).add_install_fail().build();
         let reboot_called = Rc::clone(&installer.reboot_called);
         let (_ctl, state_machine) = pool.run_until(
             StateMachineBuilder::new_stub()
@@ -3635,15 +3333,10 @@ mod tests {
                 .start(),
         );
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         blocked_timer.unblock();
         pool.run_until_stalled();
 
@@ -3682,26 +3375,18 @@ mod tests {
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let unblock_install = pool.run_until(recv_install.next()).unwrap();
         pool.run_until_stalled();
         assert_eq!(
             observer.take_states(),
-            vec![
-                State::CheckingForUpdates(InstallSource::ScheduledTask),
-                State::InstallingUpdate
-            ]
+            vec![State::CheckingForUpdates(InstallSource::ScheduledTask), State::InstallingUpdate]
         );
 
         pool.run_until(async {
             assert_eq!(
-                ctl.start_update_check(CheckOptions {
-                    source: InstallSource::OnDemand
-                })
-                .await,
+                ctl.start_update_check(CheckOptions { source: InstallSource::OnDemand }).await,
                 Ok(StartUpdateCheckResponse::AlreadyRunning)
             );
         });
@@ -3709,9 +3394,7 @@ mod tests {
         pool.run_until_stalled();
         assert_eq!(observer.take_states(), vec![]);
 
-        unblock_install
-            .send(vec![AppInstallResult::Installed])
-            .unwrap();
+        unblock_install.send(vec![AppInstallResult::Installed]).unwrap();
         pool.run_until_stalled();
         assert_eq!(observer.take_states(), vec![State::WaitingForReboot]);
 
@@ -3722,9 +3405,7 @@ mod tests {
         // Make sure when we checked whether we could reboot, it was from an OnDemand source
         assert_eq!(
             *reboot_check_options_received.borrow(),
-            vec![CheckOptions {
-                source: InstallSource::OnDemand
-            }]
+            vec![CheckOptions { source: InstallSource::OnDemand }]
         );
     }
 
@@ -3772,16 +3453,11 @@ mod tests {
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         // The first wait before update check.
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         blocked_timer.unblock();
         pool.run_until_stalled();
 
@@ -3806,10 +3482,7 @@ mod tests {
         *reboot_allowed.borrow_mut() = true;
         pool.run_until(async {
             assert_eq!(
-                ctl.start_update_check(CheckOptions {
-                    source: InstallSource::OnDemand
-                })
-                .await,
+                ctl.start_update_check(CheckOptions { source: InstallSource::OnDemand }).await,
                 Ok(StartUpdateCheckResponse::AlreadyRunning)
             );
         });
@@ -3822,12 +3495,8 @@ mod tests {
         assert_eq!(
             *reboot_check_options_received.borrow(),
             vec![
-                CheckOptions {
-                    source: InstallSource::ScheduledTask
-                },
-                CheckOptions {
-                    source: InstallSource::OnDemand
-                },
+                CheckOptions { source: InstallSource::ScheduledTask },
+                CheckOptions { source: InstallSource::OnDemand },
             ]
         );
     }
@@ -3876,16 +3545,11 @@ mod tests {
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         // The first wait before update check.
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         blocked_timer.unblock();
         pool.run_until_stalled();
 
@@ -3927,10 +3591,7 @@ mod tests {
         for app in &apps {
             expected_request_builder = expected_request_builder.add_ping(app);
         }
-        pool.run_until(assert_request(
-            &ping_request_viewer,
-            expected_request_builder,
-        ));
+        pool.run_until(assert_request(&ping_request_viewer, expected_request_builder));
 
         pool.run_until(async {
             assert_eq!(
@@ -3943,10 +3604,7 @@ mod tests {
         pool.run_until(async {
             let storage = storage_ref.lock().await;
             let context = update_check::Context::load(&*storage).await;
-            assert_eq!(
-                context.schedule.last_update_time,
-                Some(mock_time.now_in_walltime().into())
-            );
+            assert_eq!(context.schedule.last_update_time, Some(mock_time.now_in_walltime().into()));
         });
 
         // State machine should be waiting for the next ping.
@@ -3979,10 +3637,7 @@ mod tests {
         for app in &apps {
             expected_request_builder = expected_request_builder.add_ping(app);
         }
-        pool.run_until(assert_request(
-            &ping_request_viewer,
-            expected_request_builder,
-        ));
+        pool.run_until(assert_request(&ping_request_viewer, expected_request_builder));
 
         assert!(!*reboot_called.borrow());
 
@@ -4102,26 +3757,18 @@ mod tests {
         let (mut ctl, state_machine) = pool.run_until(
             StateMachineBuilder::new_stub()
                 .http(http)
-                .installer(BlockingInstaller {
-                    on_install: send_install,
-                    on_reboot: None,
-                })
+                .installer(BlockingInstaller { on_install: send_install, on_reboot: None })
                 .start(),
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe_until_terminal(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe_until_terminal(state_machine)).unwrap();
 
         let unblock_install = pool.run_until(recv_install.next()).unwrap();
         pool.run_until_stalled();
         assert_eq!(
             observer.take_states(),
-            vec![
-                State::CheckingForUpdates(InstallSource::ScheduledTask),
-                State::InstallingUpdate
-            ]
+            vec![State::CheckingForUpdates(InstallSource::ScheduledTask), State::InstallingUpdate]
         );
 
         pool.run_until(async {
@@ -4133,9 +3780,7 @@ mod tests {
         pool.run_until_stalled();
         assert_eq!(observer.take_states(), vec![]);
 
-        unblock_install
-            .send(vec![AppInstallResult::Installed])
-            .unwrap();
+        unblock_install.send(vec![AppInstallResult::Installed]).unwrap();
         pool.run_until_stalled();
 
         assert_eq!(observer.take_states(), vec![State::WaitingForReboot]);
@@ -4156,22 +3801,14 @@ mod tests {
             ..MockPolicyEngine::default()
         };
         let (mut ctl, state_machine) = pool.run_until(
-            StateMachineBuilder::new_stub()
-                .policy_engine(policy_engine)
-                .timer(timer)
-                .start(),
+            StateMachineBuilder::new_stub().policy_engine(policy_engine).timer(timer).start(),
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         mock_time.advance(Duration::from_secs(200));
         assert_eq!(observer.take_states(), vec![]);
 
@@ -4181,10 +3818,7 @@ mod tests {
 
         blocked_timer.unblock();
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         assert_eq!(
             observer.take_states(),
             vec![
@@ -4228,22 +3862,14 @@ mod tests {
             ..MockPolicyEngine::default()
         };
         let (mut ctl, state_machine) = pool.run_until(
-            StateMachineBuilder::new_stub()
-                .policy_engine(policy_engine)
-                .timer(timer)
-                .start(),
+            StateMachineBuilder::new_stub().policy_engine(policy_engine).timer(timer).start(),
         );
 
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
 
         let blocked_timer = pool.run_until(timers.next()).unwrap();
-        assert_eq!(
-            blocked_timer.requested_wait(),
-            RequestedWait::Until(next_update_time.into())
-        );
+        assert_eq!(blocked_timer.requested_wait(), RequestedWait::Until(next_update_time.into()));
         mock_time.advance(Duration::from_secs(200));
         assert_eq!(observer.take_states(), vec![]);
 
@@ -4299,10 +3925,8 @@ mod tests {
             let now_wall = update_finish_time + Duration::from_secs(1);
             let now_monotonic = state_machine_start_monotonic + Duration::from_secs(10);
 
-            let mut state_machine = StateMachineBuilder::new_stub()
-                .metrics_reporter(metrics_reporter)
-                .build()
-                .await;
+            let mut state_machine =
+                StateMachineBuilder::new_stub().metrics_reporter(metrics_reporter).build().await;
 
             // Time has advanced monotonically since we noted the start of the state machine for
             // longer than the wall time difference between update finish time and now.
@@ -4311,10 +3935,7 @@ mod tests {
                 .report_waited_for_reboot_duration(
                     update_finish_time,
                     state_machine_start_monotonic,
-                    ComplexTime {
-                        wall: now_wall,
-                        mono: now_monotonic,
-                    },
+                    ComplexTime { wall: now_wall, mono: now_monotonic },
                 )
                 .expect_err("should overflow and error out");
 
@@ -4370,14 +3991,8 @@ mod tests {
 
         // Execute state machine `run()`, simulating that we already rebooted.
         let config = Config {
-            updater: Updater {
-                name: "updater".to_string(),
-                version: Version::from([0, 1]),
-            },
-            os: OS {
-                version: "1.2.3.5".to_string(),
-                ..OS::default()
-            },
+            updater: Updater { name: "updater".to_string(), version: Version::from([0, 1]) },
+            os: OS { version: "1.2.3.5".to_string(), ..OS::default() },
             service_url: "http://example.com/".to_string(),
             omaha_public_keys: None,
         };
@@ -4394,9 +4009,7 @@ mod tests {
 
         // Move state machine forward using observer.
         let observer = TestObserver::default();
-        spawner
-            .spawn_local(observer.observe(state_machine))
-            .unwrap();
+        spawner.spawn_local(observer.observe(state_machine)).unwrap();
         pool.run_until_stalled();
 
         assert_eq!(
@@ -4425,9 +4038,7 @@ mod tests {
             let http = MockHttpRequest::new(HttpResponse::new(make_noupdate_httpresponse()));
 
             let stub_cup_handler = MockCupv2Handler::new().set_decoration_error(|| {
-                Some(CupDecorationError::ParseError(
-                    "".parse::<http::Uri>().unwrap_err(),
-                ))
+                Some(CupDecorationError::ParseError("".parse::<http::Uri>().unwrap_err()))
             });
 
             assert_matches!(
@@ -4436,9 +4047,9 @@ mod tests {
                     .cup_handler(Some(stub_cup_handler))
                     .oneshot(RequestParams::default())
                     .await,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::CupDecoration(CupDecorationError::ParseError(_))
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::CupDecoration(
+                    CupDecorationError::ParseError(_)
+                )))
             );
 
             info!("update check complete!");
@@ -4459,9 +4070,9 @@ mod tests {
                     .cup_handler(Some(stub_cup_handler))
                     .oneshot(RequestParams::default())
                     .await,
-                Err(UpdateCheckError::OmahaRequest(
-                    OmahaRequestError::CupValidation(CupVerificationError::EtagHeaderMissing)
-                ))
+                Err(UpdateCheckError::OmahaRequest(OmahaRequestError::CupValidation(
+                    CupVerificationError::EtagHeaderMissing
+                )))
             );
 
             info!("update check complete!");

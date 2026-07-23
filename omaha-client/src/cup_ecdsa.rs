@@ -9,8 +9,9 @@
 use crate::http_uri_ext::HttpUriExt as _;
 use http::{Response, Uri};
 use hyper::header::ETAG;
-use p256::ecdsa::{DerSignature, signature::Verifier as _};
-use rand::{Rng, thread_rng};
+use p256::ecdsa::DerSignature;
+use p256::ecdsa::signature::Verifier as _;
+use rand::{Rng, rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256, digest};
 use std::{collections::HashMap, convert::TryInto, fmt, fmt::Debug};
@@ -119,7 +120,7 @@ impl Default for Nonce {
 impl Nonce {
     pub fn new() -> Nonce {
         let mut nonce_bits = [0_u8; 32];
-        thread_rng().fill(&mut nonce_bits[..]);
+        rng().fill(&mut nonce_bits[..]);
         Nonce(nonce_bits)
     }
 }

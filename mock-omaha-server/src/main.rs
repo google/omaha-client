@@ -7,18 +7,13 @@
 // those terms.
 
 use argh::FromArgs;
+
 use mock_omaha_server::{
     OmahaServer, OmahaServerBuilder, PrivateKeyAndId, PrivateKeys, ResponseAndMetadata,
 };
 use std::collections::HashMap;
 use std::net::{Ipv6Addr, SocketAddr};
-use std::sync::Arc;
-
-#[cfg(feature = "tokio")]
-use tokio::sync::Mutex;
-
-#[cfg(fasync)]
-use {fuchsia_async as fasync, fuchsia_sync::Mutex};
+use std::sync::{Arc, Mutex};
 
 #[derive(FromArgs)]
 /// Arguments for mock-omaha-server.
@@ -88,48 +83,36 @@ const EXAMPLE_RESPONSES_BY_APPID: &str = r#"
 }
 "#;
 
-#[cfg_attr(fasync, fasync::run(10))]
-#[cfg_attr(feature = "tokio", tokio::main)]
+#[cfg(feature = "tokio")]
+#[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let args: Args = argh::from_env();
 
-    let (local_addr, task) = OmahaServer::start(
-        Arc::new(Mutex::new(
-            OmahaServerBuilder::default()
-                .responses_by_appid(args.responses_by_appid)
-                .private_keys(PrivateKeys {
-                    latest: PrivateKeyAndId {
-                        id: args.key_id,
-                        key: std::fs::read_to_string(&args.key_path)
-                            .unwrap_or_else(|_| {
-                                panic!("read from key_path '{:#?}' failed", args.key_path)
-                            })
-                            .parse()
-                            .expect("failed to parse key"),
-                    },
-                    historical: vec![],
-                })
-                .require_cup(args.require_cup)
-                .build()
-                .expect("omaha server build"),
-        )),
-        Some(SocketAddr::new(args.listen_on.into(), args.port)),
-    )
-    .await?;
+    let server = Arc::new(Mutex::new(
+        OmahaServerBuilder::default()
+            .responses_by_appid(args.responses_by_appid)
+            .private_keys(PrivateKeys {
+                latest: PrivateKeyAndId {
+                    id: args.key_id,
+                    key: std::fs::read_to_string(&args.key_path)
+                        .unwrap_or_else(|_| {
+                            panic!("read from key_path '{:#?}' failed", args.key_path)
+                        })
+                        .parse()
+                        .expect("failed to parse key"),
+                },
+                historical: vec![],
+            })
+            .require_cup(args.require_cup)
+            .build()
+            .expect("omaha server build"),
+    ));
 
-    println!("listening on {local_addr}");
+    let addr = SocketAddr::new(args.listen_on.into(), args.port);
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    let local_addr = listener.local_addr()?;
 
-    if let Some(t) = task {
-        #[cfg(fasync)]
-        {
-            t.await;
-            Ok(())
-        }
-        #[cfg(feature = "tokio")]
-        {
-            Ok(t.await?)
-        }
-    } else {
-        Ok(())
-    }
+    println!("listening on http://{local_addr}/");
+    OmahaServer::start(server, listener, mock_omaha_server::TokioExecutor).await?;
+    Ok(())
 }

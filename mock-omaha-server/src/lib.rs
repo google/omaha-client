@@ -15,27 +15,14 @@ use omaha_client::cup_ecdsa::test_support::{
     make_default_private_key_for_test, make_default_public_key_id_for_test,
 };
 use omaha_client::http_request::{Body, empty_body, to_bytes};
+use p256::ecdsa::signature::Signer;
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, SocketAddr};
-use std::sync::Arc;
-#[cfg(not(target_os = "fuchsia"))]
-use tokio::net::TcpListener;
+use std::future::Future;
+use std::sync::{Arc, Mutex};
 use url::Url;
-
-#[cfg(not(target_os = "fuchsia"))]
-use tokio::task::JoinHandle;
-
-#[cfg(all(not(fasync), not(target_os = "fuchsia")))]
-use tokio::sync::Mutex;
-
-#[cfg(fasync)]
-use {fuchsia_async as fasync, fuchsia_async::Task, fuchsia_sync::Mutex};
-
-#[cfg(all(fasync, target_os = "fuchsia"))]
-use {fuchsia_async::net::TcpListener, futures::stream::StreamExt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum OmahaResponse {
@@ -120,6 +107,27 @@ pub enum UpdateCheckAssertion {
     UpdatesDisabled,
 }
 
+/// Trait for spawning background futures in an executor/runtime-agnostic way.
+pub trait Executor {
+    /// Spawns a future on the executor.
+    fn spawn(&self, fut: impl Future<Output = ()> + Send + 'static);
+}
+
+/// An abstract async listener for incoming network connections.
+///
+/// Implementations of this trait allow `OmahaServer` to bind and accept socket
+/// connections without depending on a specific async TCP stream implementation.
+pub trait Listener {
+    /// The async I/O stream type that implements Hyper's Read and Write traits.
+    type Io: hyper::rt::Read + hyper::rt::Write + Unpin + Send + 'static;
+
+    /// The error type returned when accepting connections.
+    type Error;
+
+    /// Accepts an incoming connection asynchronously.
+    fn accept(&mut self) -> impl Future<Output = Result<Self::Io, Self::Error>> + Send;
+}
+
 #[derive(Clone, Debug, Builder)]
 #[builder(pattern = "owned")]
 #[builder(derive(Debug))]
@@ -149,119 +157,48 @@ impl OmahaServer {
         }
     }
 
-    /// Start the server detached, returning the address of the server
-    pub async fn start_and_detach(
-        arc_server: Arc<Mutex<OmahaServer>>,
-        addr: Option<SocketAddr>,
-    ) -> Result<String, Error> {
-        let (addr, _server_task) = OmahaServer::start(arc_server, addr).await?;
-        #[cfg(fasync)]
-        _server_task.expect("no server task found").detach();
-
-        Ok(addr)
-    }
-
-    /// Spawn the server on the current executor, returning the address of the server and
-    /// its Task.
-    #[cfg(all(fasync, target_os = "fuchsia"))]
+    /// Start the server with a custom listener and executor, running the accept loop.
     pub async fn start(
         arc_server: Arc<Mutex<OmahaServer>>,
-        addr: Option<SocketAddr>,
-    ) -> Result<(String, Option<Task<()>>), Error> {
-        let addr =
-            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
-
-        let listener = fasync::net::TcpListener::bind(&addr).expect("cannot bind to address");
-
-        let addr = listener.local_addr()?;
-
-        let server = async move {
-            let mut stream = listener.accept_stream();
-            while let Some(Ok((conn, _addr))) = stream.next().await {
+        mut listener: impl Listener + Send + 'static,
+        executor: impl Executor + Send + 'static,
+    ) -> Result<(), Error> {
+        while let Ok(io) = listener.accept().await {
+            let arc_server = Arc::clone(&arc_server);
+            let service = service_fn(move |req| {
                 let arc_server = Arc::clone(&arc_server);
-                let service = service_fn(move |req| {
-                    let arc_server = Arc::clone(&arc_server);
-                    async move { handle_request(req, &arc_server).await }
-                });
-                let io = fuchsia_hyper::TokioIo::new(fuchsia_hyper::TcpStream { stream: conn });
-                fasync::Task::spawn(async move {
-                    let _ = hyper::server::conn::http1::Builder::new()
-                        .serve_connection(io, service)
-                        .await;
-                })
-                .detach();
-            }
-        };
+                async move { handle_request(req, &arc_server).await }
+            });
+            executor.spawn(async move {
+                let _ =
+                    hyper::server::conn::http1::Builder::new().serve_connection(io, service).await;
+            });
+        }
 
-        let server_task = fasync::Task::spawn(server);
-        Ok((format!("http://{addr}/"), Some(server_task)))
+        Ok(())
     }
+}
 
-    /// Spawn the server on the current executor, returning the address of the server and
-    /// its Task.
-    #[cfg(fasync)]
-    pub async fn start(
-        arc_server: Arc<Mutex<OmahaServer>>,
-        addr: Option<SocketAddr>,
-    ) -> Result<(String, Option<Task<()>>), Error> {
-        let addr =
-            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
+/// An [`Executor`] implementation that spawns futures on the `tokio` runtime.
+#[cfg(feature = "tokio")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TokioExecutor;
 
-        let listener = TcpListener::bind(&addr).await.expect("cannot bind to address");
-
-        let addr = listener.local_addr()?;
-
-        let server = async move {
-            while let Ok((stream, _addr)) = listener.accept().await {
-                let arc_server = Arc::clone(&arc_server);
-                let service = service_fn(move |req| {
-                    let arc_server = Arc::clone(&arc_server);
-                    async move { handle_request(req, &arc_server).await }
-                });
-                let io = hyper_util::rt::TokioIo::new(stream);
-                fasync::Task::spawn(async move {
-                    let _ = hyper::server::conn::http1::Builder::new()
-                        .serve_connection(io, service)
-                        .await;
-                })
-                .detach();
-            }
-        };
-
-        let server_task = fasync::Task::spawn(server);
-        Ok((format!("http://{addr}/"), Some(server_task)))
+#[cfg(feature = "tokio")]
+impl Executor for TokioExecutor {
+    fn spawn(&self, fut: impl Future<Output = ()> + Send + 'static) {
+        tokio::spawn(fut);
     }
+}
 
-    /// Spawn the server on the current executor, returning the address of the server and
-    /// its JoinHandle.
-    #[cfg(all(feature = "tokio", not(fasync)))]
-    pub async fn start(
-        arc_server: Arc<Mutex<OmahaServer>>,
-        addr: Option<SocketAddr>,
-    ) -> Result<(String, Option<JoinHandle<()>>), Error> {
-        let addr =
-            if let Some(a) = addr { a } else { SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0) };
+#[cfg(feature = "tokio")]
+impl Listener for tokio::net::TcpListener {
+    type Io = hyper_util::rt::TokioIo<tokio::net::TcpStream>;
+    type Error = std::io::Error;
 
-        let listener = TcpListener::bind(&addr).await.expect("cannot bind to address");
-
-        let addr = listener.local_addr()?;
-
-        let server_task = tokio::spawn(async move {
-            while let Ok((stream, _addr)) = listener.accept().await {
-                let arc_server = Arc::clone(&arc_server);
-                let service = service_fn(move |req| {
-                    let arc_server = Arc::clone(&arc_server);
-                    async move { handle_request(req, &arc_server).await }
-                });
-                let io = hyper_util::rt::TokioIo::new(stream);
-                tokio::spawn(async move {
-                    let _ = hyper::server::conn::http1::Builder::new()
-                        .serve_connection(io, service)
-                        .await;
-                });
-            }
-        });
-        Ok((format!("http://{addr}/"), Some(server_task)))
+    async fn accept(&mut self) -> Result<Self::Io, Self::Error> {
+        let (stream, _) = tokio::net::TcpListener::accept(self).await?;
+        Ok(hyper_util::rt::TokioIo::new(stream))
     }
 }
 
@@ -271,8 +208,6 @@ fn make_etag(
     private_keys: &PrivateKeys,
     response_data: &[u8],
 ) -> Option<String> {
-    use p256::ecdsa::signature::Signer;
-
     if uri == "/" {
         return None;
     }
@@ -340,13 +275,7 @@ where
     let req_body = to_bytes(req).await.map_err(|_| anyhow::anyhow!("failed to read body"))?;
     let req_json: HashMap<String, ResponseAndMetadata> =
         serde_json::from_slice(&req_body).expect("parse json");
-    {
-        #[cfg(all(feature = "tokio", not(fasync)))]
-        let mut omaha_server = omaha_server.lock().await;
-        #[cfg(fasync)]
-        let mut omaha_server = omaha_server.lock();
-        omaha_server.responses_by_appid = req_json;
-    }
+    omaha_server.lock().unwrap().responses_by_appid = req_json;
 
     let builder = Response::builder().status(StatusCode::OK).header(header::CONTENT_LENGTH, 0);
     Ok(builder.body(empty_body()).unwrap())
@@ -360,10 +289,7 @@ where
     B: http_body::Body + 'static,
     B::Error: std::error::Error + Send + Sync + 'static,
 {
-    #[cfg(all(feature = "tokio", not(fasync)))]
-    let omaha_server = omaha_server.lock().await.clone();
-    #[cfg(fasync)]
-    let omaha_server = omaha_server.lock().clone();
+    let omaha_server = omaha_server.lock().unwrap().clone();
     assert_eq!(req.method(), Method::POST);
 
     if omaha_server.responses_by_appid.is_empty() {
@@ -591,48 +517,39 @@ where
     Ok(builder.body(Body::from(response_data)).unwrap())
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(any(all(test, feature = "tokio"), export_testing_macro))]
+pub mod tests {
     use super::*;
-    use anyhow::Context;
-    #[cfg(fasync)]
-    use fuchsia_async as fasync;
-    #[cfg(fasync)]
-    use fuchsia_hyper::client::Client;
-    #[cfg(feature = "tokio")]
-    use hyper_util::client::legacy::{Client, connect::HttpConnector};
+    use anyhow::Context as _;
+    use hyper_util::client::legacy::connect::Connect;
+    use std::net::{Ipv4Addr, SocketAddr};
 
-    #[cfg(fasync)]
-    async fn new_http_client() -> Client<fuchsia_hyper::HyperConnector, Body> {
-        fuchsia_hyper::new_client()
-    }
-
-    #[cfg(feature = "tokio")]
-    async fn new_http_client() -> Client<HttpConnector, Body> {
-        Client::builder(hyper_util::rt::TokioExecutor::new()).build_http()
-    }
-
-    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
-    #[cfg_attr(feature = "tokio", tokio::test)]
-    async fn test_no_validate_version() -> Result<(), Error> {
+    pub async fn test_no_validate_version<S, Fut, C, CFut, Conn>(
+        start_server: S,
+        new_http_client: C,
+    ) -> Result<(), Error>
+    where
+        S: FnOnce(Arc<Mutex<OmahaServer>>) -> Fut,
+        Fut: Future<Output = Result<String, Error>>,
+        C: Fn() -> CFut,
+        CFut: Future<Output = hyper_util::client::legacy::Client<Conn, Body>>,
+        Conn: Connect + Clone + Send + Sync + 'static,
+    {
         // Send a request with no specified version and assert that we don't check.
         // See 0.0.0.1 vs 9.9.9.9 below.
-        let server = OmahaServer::start_and_detach(
-            Arc::new(Mutex::new(
-                OmahaServerBuilder::default()
-                    .responses_by_appid([(
-                        "integration-test-appid-1".to_string(),
-                        ResponseAndMetadata {
-                            response: OmahaResponse::NoUpdate,
-                            version: None,
-                            ..Default::default()
-                        },
-                    )])
-                    .build()
-                    .unwrap(),
-            )),
-            None,
-        )
+        let server = start_server(Arc::new(Mutex::new(
+            OmahaServerBuilder::default()
+                .responses_by_appid([(
+                    "integration-test-appid-1".to_string(),
+                    ResponseAndMetadata {
+                        response: OmahaResponse::NoUpdate,
+                        version: None,
+                        ..Default::default()
+                    },
+                )])
+                .build()
+                .unwrap(),
+        )))
         .await
         .context("starting server")?;
 
@@ -665,35 +582,40 @@ mod tests {
         Ok(())
     }
 
-    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
-    #[cfg_attr(feature = "tokio", tokio::test)]
-    async fn test_server_replies() -> Result<(), Error> {
-        let server_url = OmahaServer::start_and_detach(
-            Arc::new(Mutex::new(
-                OmahaServerBuilder::default()
-                    .responses_by_appid([
-                        (
-                            "integration-test-appid-1".to_string(),
-                            ResponseAndMetadata {
-                                response: OmahaResponse::NoUpdate,
-                                version: Some("0.0.0.1".to_string()),
-                                ..Default::default()
-                            },
-                        ),
-                        (
-                            "integration-test-appid-2".to_string(),
-                            ResponseAndMetadata {
-                                response: OmahaResponse::NoUpdate,
-                                version: Some("0.0.0.2".to_string()),
-                                ..Default::default()
-                            },
-                        ),
-                    ])
-                    .build()
-                    .unwrap(),
-            )),
-            None,
-        )
+    pub async fn test_server_replies<S, Fut, C, CFut, Conn>(
+        start_server: S,
+        new_http_client: C,
+    ) -> Result<(), Error>
+    where
+        S: FnOnce(Arc<Mutex<OmahaServer>>) -> Fut,
+        Fut: Future<Output = Result<String, Error>>,
+        C: Fn() -> CFut,
+        CFut: Future<Output = hyper_util::client::legacy::Client<Conn, Body>>,
+        Conn: Connect + Clone + Send + Sync + 'static,
+    {
+        let server_url = start_server(Arc::new(Mutex::new(
+            OmahaServerBuilder::default()
+                .responses_by_appid([
+                    (
+                        "integration-test-appid-1".to_string(),
+                        ResponseAndMetadata {
+                            response: OmahaResponse::NoUpdate,
+                            version: Some("0.0.0.1".to_string()),
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        "integration-test-appid-2".to_string(),
+                        ResponseAndMetadata {
+                            response: OmahaResponse::NoUpdate,
+                            version: Some("0.0.0.2".to_string()),
+                            ..Default::default()
+                        },
+                    ),
+                ])
+                .build()
+                .unwrap(),
+        )))
         .await
         .context("starting server")?;
 
@@ -788,15 +710,20 @@ mod tests {
         Ok(())
     }
 
-    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
-    #[cfg_attr(feature = "tokio", tokio::test)]
-    async fn test_no_configured_responses() -> Result<(), Error> {
-        let server = OmahaServer::start_and_detach(
-            Arc::new(Mutex::new(
-                OmahaServerBuilder::default().responses_by_appid([]).build().unwrap(),
-            )),
-            None,
-        )
+    pub async fn test_no_configured_responses<S, Fut, C, CFut, Conn>(
+        start_server: S,
+        new_http_client: C,
+    ) -> Result<(), Error>
+    where
+        S: FnOnce(Arc<Mutex<OmahaServer>>) -> Fut,
+        Fut: Future<Output = Result<String, Error>>,
+        C: Fn() -> CFut,
+        CFut: Future<Output = hyper_util::client::legacy::Client<Conn, Body>>,
+        Conn: Connect + Clone + Send + Sync + 'static,
+    {
+        let server = start_server(Arc::new(Mutex::new(
+            OmahaServerBuilder::default().responses_by_appid([]).build().unwrap(),
+        )))
         .await
         .context("starting server")?;
 
@@ -818,26 +745,31 @@ mod tests {
         Ok(())
     }
 
-    #[cfg_attr(fasync, fasync::run_singlethreaded(test))]
-    #[cfg_attr(feature = "tokio", tokio::test)]
-    async fn test_server_expect_cup_nopanic() -> Result<(), Error> {
-        let server_url = OmahaServer::start_and_detach(
-            Arc::new(Mutex::new(
-                OmahaServerBuilder::default()
-                    .responses_by_appid([(
-                        "integration-test-appid-1".to_string(),
-                        ResponseAndMetadata {
-                            response: OmahaResponse::NoUpdate,
-                            version: Some("0.0.0.1".to_string()),
-                            ..Default::default()
-                        },
-                    )])
-                    .require_cup(true)
-                    .build()
-                    .unwrap(),
-            )),
-            None,
-        )
+    pub async fn test_server_expect_cup_nopanic<S, Fut, C, CFut, Conn>(
+        start_server: S,
+        new_http_client: C,
+    ) -> Result<(), Error>
+    where
+        S: FnOnce(Arc<Mutex<OmahaServer>>) -> Fut,
+        Fut: Future<Output = Result<String, Error>>,
+        C: Fn() -> CFut,
+        CFut: Future<Output = hyper_util::client::legacy::Client<Conn, Body>>,
+        Conn: Connect + Clone + Send + Sync + 'static,
+    {
+        let server_url = start_server(Arc::new(Mutex::new(
+            OmahaServerBuilder::default()
+                .responses_by_appid([(
+                    "integration-test-appid-1".to_string(),
+                    ResponseAndMetadata {
+                        response: OmahaResponse::NoUpdate,
+                        version: Some("0.0.0.1".to_string()),
+                        ..Default::default()
+                    },
+                )])
+                .require_cup(true)
+                .build()
+                .unwrap(),
+        )))
         .await
         .context("starting server")?;
 
@@ -868,34 +800,30 @@ mod tests {
         Ok(())
     }
 
-    #[cfg_attr(
-        fasync,
-        fasync::run_singlethreaded(test),
-        should_panic(expected = "configured to expect CUP")
-    )]
-    #[cfg_attr(
-        feature = "tokio",
-        tokio::test,
-        should_panic(expected = "hyper::Error(IncompleteMessage)")
-    )]
-    async fn test_server_expect_cup_panic() {
-        let server_url = OmahaServer::start_and_detach(
-            Arc::new(Mutex::new(
-                OmahaServerBuilder::default()
-                    .responses_by_appid([(
-                        "integration-test-appid-1".to_string(),
-                        ResponseAndMetadata {
-                            response: OmahaResponse::NoUpdate,
-                            version: Some("0.0.0.1".to_string()),
-                            ..Default::default()
-                        },
-                    )])
-                    .require_cup(true)
-                    .build()
-                    .unwrap(),
-            )),
-            None,
-        )
+    pub async fn test_server_expect_cup_panic<S, Fut, C, CFut, Conn>(
+        start_server: S,
+        new_http_client: C,
+    ) where
+        S: FnOnce(Arc<Mutex<OmahaServer>>) -> Fut,
+        Fut: Future<Output = Result<String, Error>>,
+        C: Fn() -> CFut,
+        CFut: Future<Output = hyper_util::client::legacy::Client<Conn, Body>>,
+        Conn: Connect + Clone + Send + Sync + 'static,
+    {
+        let server_url = start_server(Arc::new(Mutex::new(
+            OmahaServerBuilder::default()
+                .responses_by_appid([(
+                    "integration-test-appid-1".to_string(),
+                    ResponseAndMetadata {
+                        response: OmahaResponse::NoUpdate,
+                        version: Some("0.0.0.1".to_string()),
+                        ..Default::default()
+                    },
+                )])
+                .require_cup(true)
+                .build()
+                .unwrap(),
+        )))
         .await
         .context("starting server")
         .unwrap();
@@ -916,5 +844,60 @@ mod tests {
         // panic. (See should_panic above.)
         let request = Request::post(&server_url).body(Body::from(body.to_string())).unwrap();
         let _response = client.request(request).await.unwrap();
+    }
+
+    #[macro_export]
+    macro_rules! declare_tests {
+        (
+            test_attr: #[$test_attr:meta],
+            start_server: $start_server:expr,
+            new_http_client: $new_http_client:expr,
+            cup_expect_panic: $panic_expected:expr,
+        ) => {
+            #[$test_attr]
+            async fn test_tokio_no_validate_version() -> Result<(), ::anyhow::Error> {
+                $crate::tests::test_no_validate_version($start_server, $new_http_client).await
+            }
+
+            #[$test_attr]
+            async fn test_tokio_server_replies() -> Result<(), ::anyhow::Error> {
+                $crate::tests::test_server_replies($start_server, $new_http_client).await
+            }
+
+            #[$test_attr]
+            async fn test_tokio_no_configured_responses() -> Result<(), ::anyhow::Error> {
+                $crate::tests::test_no_configured_responses($start_server, $new_http_client).await
+            }
+
+            #[$test_attr]
+            async fn test_tokio_server_expect_cup_nopanic() -> Result<(), ::anyhow::Error> {
+                $crate::tests::test_server_expect_cup_nopanic($start_server, $new_http_client).await
+            }
+
+            #[$test_attr]
+            #[should_panic(expected = $panic_expected)]
+            async fn test_tokio_server_expect_cup_panic() {
+                $crate::tests::test_server_expect_cup_panic($start_server, $new_http_client).await;
+            }
+        };
+    }
+
+    #[cfg(feature = "tokio")]
+    declare_tests! {
+        test_attr: #[tokio::test],
+        start_server: async |server| {
+            let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0);
+            let listener = tokio::net::TcpListener::bind(&addr).await?;
+            let addr = listener.local_addr()?;
+            TokioExecutor.spawn(async move {
+                let _ = OmahaServer::start(server, listener, TokioExecutor).await;
+            });
+            Ok(format!("http://{addr}/"))
+        },
+        new_http_client: async || {
+            hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+                .build_http()
+        },
+        cup_expect_panic: "hyper::Error(IncompleteMessage)",
     }
 }
